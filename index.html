@@ -10,6 +10,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     
     <style>
         * {
@@ -23,15 +24,19 @@
             background: #1e1e1e;
             min-height: 100vh;
             padding: 20px;
+            width: 100vw;
+            overflow-x: auto;
         }
 
         .container {
-            max-width: 1400px;
+            width: 100vw;
+            max-width: 100vw;
+            min-width: 0;
             margin: 0 auto;
             background: #252526;
             border-radius: 15px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-            overflow: hidden;
+            overflow: visible;
             border: 1px solid #3e3e42;
         }
 
@@ -51,6 +56,7 @@
             display: flex;
             background: #2d2d30;
             border-bottom: 2px solid #007acc;
+            overflow-x: auto;
         }
 
         .tab {
@@ -64,6 +70,7 @@
             transition: all 0.3s;
             border-right: 1px solid #3e3e42;
             color: #cccccc;
+            white-space: nowrap;
         }
 
         .tab:hover {
@@ -316,7 +323,7 @@
         }
 
         th {
-            padding: 15px 10px;
+                
             text-align: left;
             font-weight: 600;
             font-size: 13px;
@@ -410,100 +417,219 @@
             margin-bottom: 20px;
         }
 
-        @media (max-width: 768px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
+        .dia-card {
+            background: #252526;
+            border: 2px solid #3e3e42;
+            border-radius: 10px;
+            padding: 15px;
+            min-height: 200px;
+            transition: all 0.3s;
+        }
 
-            header h1 {
-                font-size: 1.5em;
-            }
+        .dia-card:hover {
+            border-color: #007acc;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 122, 204, 0.3);
+        }
 
-            .tab {
-                font-size: 14px;
-                padding: 12px 10px;
+        .dia-card.hoje {
+            border-color: #007acc;
+            background: #1a3a52;
+        }
+
+        .dia-card-header {
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3e3e42;
+            margin-bottom: 10px;
+        }
+
+        .dia-card-header h4 {
+            color: #007acc;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .dia-card-header .data {
+            color: #cccccc;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .container-item {
+            background: #1e1e1e;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 3px solid #007acc;
+            font-size: 12px;
+        }
+
+        .container-item strong {
+            color: #007acc;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .container-item .produto {
+            color: #cccccc;
+            margin-bottom: 2px;
+        }
+
+        .container-item .quantidade {
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-aguardando {
+            background: #ffa726;
+            color: white;
+        }
+
+        .status-processo {
+            background: #42a5f5;
+            color: white;
+        }
+
+        .status-concluido {
+            background: #66bb6a;
+            color: white;
+        }
+
+        .btn-status {
+            background: #66bb6a;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        /* Responsividade para o calendário semanal - sem rolagem horizontal */
+        #calendarioSemanal {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+            width: 100%;
+            min-width: 0;
+            max-width: 100vw;
+        }
+        #calendarioSemanal .dia-card {
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        @media (max-width: 1200px) {
+            #calendarioSemanal {
+                grid-template-columns: repeat(2, 1fr) !important;
             }
+        }
+        @media (max-width: 900px) {
+            #calendarioSemanal {
+                grid-template-columns: 1fr !important;
+            }
+        }
+        .dia-card-header h4, .dia-card-header .data {
+            font-size: 1em;
+        }
+        .dia-card-body {
+            font-size: 0.95em;
+        }
+        .dia-card-body p {
+            text-align: center !important;
+            margin: 0 auto;
+        }
+
+        /* Estilos para o botão de login/logout */
+        #login-area {
+            position: absolute;
+            top: 30px;
+            right: 40px;
+        }
+
+        #loginBtn, #logoutBtn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #loginBtn {
+            background: #007acc;
+            color: white;
+        }
+
+        #loginBtn:hover {
+            background: #005a9e;
+        }
+
+        #logoutBtn {
+            background: #ef5350;
+            color: white;
+        }
+
+        #logoutBtn:hover {
+            background: #c62828;
+        }
+
+        #userEmail {
+            color: #fff;
+            margin-left: 10px;
+            font-size: 14px;
+            display: none;
         }
     </style>
 </head>
 <body>
+    <!-- Modal de Login -->
+    <div id="modalLogin" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:2000; align-items:center; justify-content:center;">
+        <div style="background:#252526; padding:40px 30px 30px 30px; border-radius:12px; max-width:350px; margin:auto; box-shadow:0 8px 32px #0008; border:1px solid #3e3e42; position:relative;">
+            <h2 style="color:#007acc; text-align:center; margin-bottom:20px;">Login</h2>
+            <form id="formLogin" autocomplete="off">
+                <div style="margin-bottom:15px;">
+                    <label for="loginUsuario" style="color:#ccc; font-weight:600;">Usuário</label>
+                    <input type="text" id="loginUsuario" required style="width:100%; padding:10px; border-radius:6px; border:1px solid #3e3e42; background:#1e1e1e; color:#ccc;">
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label for="loginSenha" style="color:#ccc; font-weight:600;">Senha</label>
+                    <input type="password" id="loginSenha" required style="width:100%; padding:10px; border-radius:6px; border:1px solid #3e3e42; background:#1e1e1e; color:#ccc;">
+                </div>
+                <div style="text-align:center;">
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Entrar</button>
+                </div>
+                <div id="loginErro" style="color:#ef5350; text-align:center; margin-top:10px; display:none;">Usuário ou senha inválidos!</div>
+            </form>
+        </div>
+    </div>
+
     <div class="container">
         <header>
             <h1>📦 Sistema de Gestão de Recebimento de Container</h1>
             <p>Controle completo de importações e recebimentos</p>
+
+            <!-- Botões de Login/Logout -->
+            <div id="login-area">
+                <button id="loginBtn" class="btn btn-primary" onclick="abrirModalLogin()">Login</button>
+                <button id="logoutBtn" class="btn btn-delete" onclick="logout()">Sair</button>
+                <span id="userEmail" style="color:#fff; margin-left:10px; font-size:14px; display:none;"></span>
+            </div>
         </header>
 
         <div class="tabs">
-            <button class="tab active" onclick="openTab('registro')">📝 Registro</button>
+            <button class="tab active" onclick="openTab('planejador')">📅 Planejador Semanal</button>
             <button class="tab" onclick="openTab('consulta')">📊 Consulta</button>
             <button class="tab" onclick="openTab('cadastro')">🚚 Cadastro</button>
             <button class="tab" onclick="openTab('dashboard')">📈 Dashboard</button>
-        </div>
-
-        <!-- ABA REGISTRO -->
-        <div id="registro" class="tab-content active">
-            <h2 style="margin-bottom: 20px; color: #007acc;">Novo Registro de Container</h2>
-            
-            <form id="containerForm" class="form-section">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="refTbx">Ref. TBX (Lote do Container) *</label>
-                        <input type="text" id="refTbx" required placeholder="Ex: TBX-2025-001">
-                    </div>
-                    <div class="form-group">
-                        <label for="container">N° Container *</label>
-                        <input type="text" id="container" required placeholder="Ex: ABCD1234567">
-                    </div>
-                    <div class="form-group">
-                        <label for="vencimentoPorto">Vencimento Armazenagem PORTO *</label>
-                        <input type="date" id="vencimentoPorto" required>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="dataLiberacao">Data da Liberação Carregamento</label>
-                        <input type="date" id="dataLiberacao">
-                    </div>
-                    <div class="form-group">
-                        <label for="dataCarregamento">Data do Carregamento</label>
-                        <input type="date" id="dataCarregamento">
-                    </div>
-                    <div class="form-group">
-                        <label for="vencimentoDemurrage">Vencimento Demurrage *</label>
-                        <input type="date" id="vencimentoDemurrage" required>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="entregaTbx">Entrega TBX (Data)</label>
-                        <input type="date" id="entregaTbx">
-                    </div>
-                    <div class="form-group">
-                        <label for="previsaoDescarregamento">Previsão de Início de Descarregamento (Hora)</label>
-                        <input type="time" id="previsaoDescarregamento">
-                    </div>
-                    <div class="form-group">
-                        <label for="transportadora">Transportadora</label>
-                        <select id="transportadora">
-                            <option value="">Selecione uma transportadora</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="frete">Frete (Porto x TBX)</label>
-                        <input type="text" id="frete" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
-                    </div>
-                </div>
-
-                <div style="margin-top: 25px; text-align: right;">
-                    <button type="button" class="btn btn-primary" onclick="limparFormulario()" style="background: #999; margin-right: 10px;">Limpar</button>
-                    <button type="submit" class="btn btn-primary">💾 Salvar Registro</button>
-                </div>
-            </form>
         </div>
 
         <!-- ABA CONSULTA -->
@@ -512,19 +638,12 @@
             
             <div class="import-section">
                 <h3 style="margin-bottom: 15px; color: #007acc;">📥 Importar/Exportar Dados</h3>
-                <div style="margin-bottom: 15px;">
+                <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
                     <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="importarArquivo(event)" style="display: none;">
                     <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">📂 Importar Excel/CSV</button>
                     <button class="btn btn-export" onclick="exportarParaExcel()">📤 Exportar para Excel</button>
-                    <button class="btn btn-delete" onclick="limparTodosDados()" style="margin-left: 10px;">🗑️ Limpar Todos os Dados</button>
-                </div>
-                <div class="import-info">
-                    <strong>ℹ️ Formato esperado do arquivo:</strong>
-                    <ul style="font-size: 13px; margin-top: 5px;">
-                        <li>Colunas: Ref. TBX | Containers | Vencimento armazenagem PORTO | Vencimento demurrage | Data da liberação carregamento | Data carregamento | Entrada armazém parceiro | Vencimento prazo no armazém | Entrega TBX | Status | Obs | Transporte Porto x TBX | Arm. de container CHEIO | Arm. de container VAZIO | Janela especial | Mão de obra para descarregamento | Lavação container</li>
-                        <li>Formato de data: DD/MM/AAAA</li>
-                        <li>Suporta arquivos Excel (.xlsx, .xls) e CSV</li>
-                    </ul>
+                    <button class="btn btn-delete" onclick="limparTodosDados()">🗑️ Limpar Todos os Dados</button>
+                    <button class="btn" style="background: #3e3e42; cursor: help;" title="Formato esperado do arquivo:&#10;• Colunas: Ref. TBX | Containers | Vencimento armazenagem PORTO | Vencimento demurrage | Data da liberação carregamento | Data carregamento | Entrada armazém parceiro | Vencimento prazo no armazém | Entrega TBX | Status | Obs | Transporte Porto x TBX | Arm. de container CHEIO | Arm. de container VAZIO | Janela especial | Mão de obra para descarregamento | Lavação container&#10;• Formato de data: DD/MM/AAAA&#10;• Suporta arquivos Excel (.xlsx, .xls) e CSV">ℹ️ Formato</button>
                 </div>
             </div>
 
@@ -552,8 +671,6 @@
                             <th>Previsão Descarga</th>
                             <th>Transportadora</th>
                             <th>Frete (R$)</th>
-                            <th>Ações</th>
-                        </tr>
                     </thead>
                     <tbody id="tableBody">
                         <tr>
@@ -567,6 +684,9 @@
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Paginação -->
+            <div id="paginacao"></div>
         </div>
 
         <!-- ABA CADASTRO -->
@@ -604,6 +724,53 @@
                                 <div>
                                     <div style="font-size: 3em;">🚚</div>
                                     <p>Nenhuma transportadora cadastrada. Adicione uma nova acima.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Cadastro de Parâmetro de Peças por Pallet -->
+            <div class="form-section" style="margin-top: 40px;">
+                <h3 style="margin-bottom: 15px; color: #007acc;">📦 Parâmetro: Peças por Pallet</h3>
+                <form id="parametroPalletForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="codigoPallet">Código do Produto *</label>
+                            <input type="text" id="codigoPallet" required placeholder="Ex: PVAB0002">
+                        </div>
+                        <div class="form-group">
+                            <label for="quantidadePallet">Capacidade por local *</label>
+                            <input type="number" id="quantidadePallet" required min="1" placeholder="Ex: 6">
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; text-align: right; display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+                        <button type="button" class="btn btn-primary" onclick="document.getElementById('parametroPalletForm').reset()" style="background: #999;">Limpar</button>
+                        <button type="submit" class="btn btn-primary">💾 Salvar Parâmetro</button>
+                        <input type="file" id="importarParametrosPalletInput" accept=".xlsx,.xls,.csv" style="display:none;">
+                        <button type="button" class="btn btn-import" onclick="document.getElementById('importarParametrosPalletInput').click()">📂 Importar Arquivo</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-container">
+                <h3 style="margin-bottom: 15px;">📦 Parâmetros Cadastrados</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Capacidade</th>
+                            <th>Unidade</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="parametrosPalletTableBody">
+                        <tr>
+                            <td colspan="4" class="empty-state">
+                                <div>
+                                    <div style="font-size: 3em;">📦</div>
+                                    <p>Nenhum parâmetro cadastrado. Adicione um novo acima.</p>
                                 </div>
                             </td>
                         </tr>
@@ -687,9 +854,250 @@
                 </table>
             </div>
         </div>
+
+        <!-- ABA PLANEJADOR SEMANAL -->
+        <div id="planejador" class="tab-content active">
+            <h2 style="margin-bottom: 20px; color: #007acc;">📅 Planejador Semanal de Recebimento</h2>
+            
+            <!-- Navegação de Semana -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <button class="btn btn-primary" onclick="navegarSemana(-1)">⬅️ Semana Anterior</button>
+                <h3 id="tituloSemana" style="color: #007acc;">Semana Atual</h3>
+                <button class="btn btn-primary" onclick="navegarSemana(1)">Semana Seguinte ➡️</button>
+            </div>
+
+            <!-- Importar Base de Previsão (só para logado) -->
+            <div class="form-section" id="importPrevisaoSection" style="margin-bottom: 20px; display: none;">
+                <h3 style="margin-bottom: 15px; color: #007acc;">📥 Importar Base de Previsão</h3>
+                <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                    <input type="file" id="fileInputPrevisao" accept=".xlsx,.xls,.csv" onchange="importarPrevisao(event)" style="display: none;">
+                    <button class="btn btn-import" onclick="document.getElementById('fileInputPrevisao').click()">📂 Importar Excel de Previsão</button>
+                    <button class="btn btn-primary" onclick="abrirModalRegistro()">➕ Programação de Container</button>
+                    <button class="btn" style="background: #3e3e42; cursor: help;" title="Formato esperado:&#10;• Coluna A: Número da PO (Lote)&#10;• Coluna D: Container&#10;• Coluna E: Item/Produto&#10;• Coluna F: Quantidade&#10;• Coluna I: Previsão de Chegada (Data Embarque)">ℹ️ Formato</button>
+                    <small style="color: #e74c3c;">⚠️ A importação substitui todos os dados anteriores</small>
+                </div>
+            </div>
+
+            <!-- Resumo da Semana -->
+            <div class="stats" style="margin-bottom: 20px;">
+                <div class="stat-card">
+                    <h3 id="totalContainersSemana">0</h3>
+                    <p>Containers Previstos</p>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <h3 id="totalItensSemana">0</h3>
+                    <p>Total de Itens</p>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <h3 id="totalUnidadesSemana">0</h3>
+                    <p>Total de Unidades</p>
+                </div>
+            </div>
+
+            <!-- Calendário Semanal -->
+            <div id="calendarioSemanal">
+                <!-- Dias da semana serão gerados dinamicamente -->
+            </div>
+
+            <!-- Lista de Produtos Esperados -->
+            <div class="table-container">
+                <h3 style="margin-bottom: 15px;">📦 Produtos Esperados na Semana</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Produto/Item</th>
+                            <th>Containers</th>
+                            <th>Quantidade Total</th>
+                            <th>Tipo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="produtosSemanaBody">
+                        <tr>
+                            <td colspan="4" class="empty-state">
+                                <div>
+                                    <div style="font-size: 3em;">📦</div>
+                                    <p>Nenhum produto previsto para esta semana.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Modal para Registro de Container -->
+        <div id="modalRegistro" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; overflow-y: auto;">
+            <div style="max-width: 800px; margin: 50px auto; background: #252526; border-radius: 15px; padding: 30px; border: 1px solid #3e3e42;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="color: #007acc; margin: 0;">Programação de Container</h2>
+                    <button onclick="fecharModalRegistro()" style="background: #ef5350; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 16px;">✖ Fechar</button>
+                </div>
+
+                <form id="containerForm" class="form-section" style="margin: 0;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="selectPO">Selecionar PO/Lote da Programação</label>
+                            <select id="selectPO" onchange="carregarContainersPorPO()">
+                                <option value="">Selecione uma PO</option>
+                            </select>
+                            <small style="color: #858585; margin-top: 5px; display: block;">Ou preencha manualmente abaixo</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="selectContainer">Selecionar Container da PO</label>
+                            <select id="selectContainer" onchange="preencherDadosContainer()" disabled>
+                                <option value="">Selecione um container</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="refTbx">Ref. TBX (Lote) *</label>
+                            <input type="text" id="refTbx" required placeholder="Ex: TBX-2025-001">
+                        </div>
+                        <div class="form-group">
+                            <label for="container">N° Container *</label>
+                            <input type="text" id="container" required placeholder="Ex: ABCD1234567">
+                        </div>
+                        <div class="form-group">
+                            <label for="vencimentoPorto">Vencimento Armazenagem PORTO *</label>
+                            <input type="date" id="vencimentoPorto" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dataLiberacao">Data da Liberação Carregamento</label>
+                            <input type="date" id="dataLiberacao">
+                        </div>
+                        <div class="form-group">
+                            <label for="dataCarregamento">Data do Carregamento</label>
+                            <input type="date" id="dataCarregamento">
+                        </div>
+                        <div class="form-group">
+                            <label for="vencimentoDemurrage">Vencimento Demurrage *</label>
+                            <input type="date" id="vencimentoDemurrage" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="entregaTbx">Entrega TBX (Data)</label>
+                            <input type="date" id="entregaTbx">
+                        </div>
+                        <div class="form-group">
+                            <label for="previsaoDescarregamento">Previsão de Início de Descarregamento (Hora)</label>
+                            <input type="time" id="previsaoDescarregamento">
+                        </div>
+                        <div class="form-group">
+                            <label for="transportadora">Transportadora</label>
+                            <select id="transportadora">
+                                <option value="">Selecione uma transportadora</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="frete">Frete (Porto x TBX)</label>
+                            <input type="text" id="frete" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 25px; text-align: right;">
+                        <button type="button" class="btn btn-primary" onclick="limparFormulario()" style="background: #999; margin-right: 10px;">Limpar</button>
+                        <button type="submit" class="btn btn-primary">💾 Salvar Container</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <script>
+                // --- LOGIN SIMPLES ---
+                let usuarioLogado = false;
+                function abrirModalLogin() {
+                    document.getElementById('modalLogin').style.display = 'flex';
+                    document.getElementById('loginUsuario').focus();
+                }
+                function fecharModalLogin() {
+                    document.getElementById('modalLogin').style.display = 'none';
+                    document.getElementById('formLogin').reset();
+                    document.getElementById('loginErro').style.display = 'none';
+                }
+                document.getElementById('formLogin').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const usuario = document.getElementById('loginUsuario').value.trim();
+                    const senha = document.getElementById('loginSenha').value;
+                    if (usuario === 'wellinton' && senha === 'wellinton7842') {
+                        usuarioLogado = true;
+                        localStorage.setItem('usuarioLogado', '1');
+                        fecharModalLogin();
+                        atualizarPermissoes();
+                    } else {
+                        document.getElementById('loginErro').style.display = 'block';
+                    }
+                });
+                function logout() {
+                    usuarioLogado = false;
+                    localStorage.removeItem('usuarioLogado');
+                    atualizarPermissoes();
+                    // Voltar para a aba planejador ao sair
+                    openTab('planejador');
+                }
+                function atualizarPermissoes() {
+                                // Exibir/ocultar importação de previsão no planejador semanal
+                                var importPrevisaoSection = document.getElementById('importPrevisaoSection');
+                                if (importPrevisaoSection) {
+                                    importPrevisaoSection.style.display = usuarioLogado ? '' : 'none';
+                                }
+                    // Botões de login/logout
+                    var loginBtn = document.getElementById('loginBtn');
+                    var logoutBtn = document.getElementById('logoutBtn');
+                    if (usuarioLogado) {
+                        if (loginBtn) loginBtn.style.display = 'none';
+                        if (logoutBtn) logoutBtn.style.display = '';
+                    } else {
+                        if (loginBtn) loginBtn.style.display = '';
+                        if (logoutBtn) logoutBtn.style.display = 'none';
+                    }
+                    // Tabs e conteúdos
+                    const tabs = document.querySelectorAll('.tab');
+                    tabs.forEach(tab => {
+                        if (tab.textContent.includes('Cadastro') || tab.textContent.includes('Dashboard')) {
+                            tab.style.display = usuarioLogado ? '' : 'none';
+                        }
+                    });
+                    // Conteúdos das abas
+                    document.getElementById('cadastro').style.display = usuarioLogado ? '' : 'none';
+                    document.getElementById('dashboard').style.display = usuarioLogado ? '' : 'none';
+                    // Ocultar seção de importação/exportação de quem não está logado
+                    document.querySelectorAll('.import-section').forEach(sec => {
+                        sec.style.display = usuarioLogado ? '' : 'none';
+                    });
+                    // Botões de ação restritos (exceto navegação de semana)
+                    const botoesRestritos = document.querySelectorAll('.btn-edit, .btn-delete, .btn-import, .btn-export, .btn-status, [onclick^="abrirModalRegistro"], [onclick^="limparTodosDados"], [onclick^="marcarTodosComoEntregue"]');
+                    botoesRestritos.forEach(btn => {
+                        if (btn.closest('#planejador') || btn.closest('#consulta')) {
+                            btn.style.display = usuarioLogado ? '' : 'none';
+                        }
+                    });
+                    // Formulários restritos
+                    const formsRestritos = document.querySelectorAll('#containerForm, #transportadoraForm, #parametroPalletForm');
+                    formsRestritos.forEach(form => {
+                        form.querySelectorAll('input, select, button').forEach(el => {
+                            el.disabled = !usuarioLogado;
+                        });
+                    });
+                }
+                // Fechar modal login ao clicar fora
+                document.getElementById('modalLogin').addEventListener('click', function(e) {
+                    if (e.target === this) fecharModalLogin();
+                });
+                // Estado inicial
+                window.addEventListener('DOMContentLoaded', function() {
+                    usuarioLogado = localStorage.getItem('usuarioLogado') === '1';
+                    atualizarPermissoes();
+                });
         // Configuração do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyB-1btOCpD3n9f0cR00iJDN64tGlAbU4wc",
@@ -712,6 +1120,10 @@
         let filtroStatusAtual = 'pendente'; // Filtro padrão: pendente
         let anoSelecionado = 'todos'; // Ano padrão: todos
         let graficoMensal = null; // Variável para armazenar instância do gráfico
+        
+        // Paginação
+        let paginaAtual = 1;
+        const itensPorPagina = 20;
 
         // Carregar dados ao iniciar
         window.onload = function() {
@@ -723,37 +1135,29 @@
             try {
                 // Carregar containers
                 const containersSnapshot = await db.collection('containers').get();
-                containers = containersSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
+                containers = containersSnapshot.docs.map(doc => doc.data());
 
                 // Carregar transportadoras
                 const transportadorasSnapshot = await db.collection('transportadoras').get();
                 transportadoras = transportadorasSnapshot.docs.map(doc => doc.data().nome).sort();
 
+                // Carregar previsões
+                await carregarPrevisoesFirebase();
+
                 // Atualizar interface
                 atualizarTabela();
                 atualizarDashboard();
                 carregarTransportadoras();
-                atualizarTabelaTransportadoras();
             } catch (error) {
                 console.error('Erro ao carregar dados:', error);
-                alert('⚠️ Erro ao carregar dados do servidor. Verifique sua conexão.');
+                alert('⚠️ Erro ao carregar dados do servidor.');
             }
         }
 
         // Salvar container no Firebase
         async function salvarContainerFirebase(registro) {
             try {
-                if (editandoId) {
-                    // Atualizar
-                    await db.collection('containers').doc(editandoId).set(registro);
-                } else {
-                    // Criar novo
-                    const docRef = await db.collection('containers').add(registro);
-                    registro.id = docRef.id;
-                }
+                await db.collection('containers').doc(String(registro.id)).set(registro);
                 return true;
             } catch (error) {
                 console.error('Erro ao salvar:', error);
@@ -761,14 +1165,12 @@
                 return false;
             }
         }
-
-        // Excluir container do Firebase
         async function excluirContainerFirebase(id) {
             try {
-                await db.collection('containers').doc(id).delete();
+                await db.collection('containers').doc(String(id)).delete();
                 return true;
             } catch (error) {
-                console.error('Erro ao excluir:', error);
+                console.error('Erro ao excluir:', error, id);
                 alert('⚠️ Erro ao excluir do servidor.');
                 return false;
             }
@@ -807,11 +1209,16 @@
         function openTab(tabName) {
             const tabs = document.querySelectorAll('.tab');
             const contents = document.querySelectorAll('.tab-content');
-            
             tabs.forEach(tab => tab.classList.remove('active'));
             contents.forEach(content => content.classList.remove('active'));
-            
-            event.target.classList.add('active');
+
+            // Ativar a aba correta pelo nome
+            // Encontrar o botão da aba correspondente
+            tabs.forEach(tab => {
+                if (tab.getAttribute('onclick') && tab.getAttribute('onclick').includes(`openTab('${tabName}')`)) {
+                    tab.classList.add('active');
+                }
+            });
             document.getElementById(tabName).classList.add('active');
 
             if (tabName === 'dashboard') {
@@ -911,11 +1318,17 @@
         // Submeter formulário
         document.getElementById('containerForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+            const refTbx = document.getElementById('refTbx').value;
+            const containerNum = document.getElementById('container').value;
+            // Impedir programação duplicada
+            if (!editandoId && containers.some(c => c.refTbx === refTbx && c.container === containerNum)) {
+                alert('⚠️ Este lote e container já foram programados. Se deseja reprogramar, exclua primeiro na aba Consulta.');
+                return;
+            }
             const registro = {
                 id: editandoId || Date.now(),
-                refTbx: document.getElementById('refTbx').value,
-                container: document.getElementById('container').value,
+                refTbx: refTbx,
+                container: containerNum,
                 vencimentoPorto: document.getElementById('vencimentoPorto').value,
                 dataLiberacao: document.getElementById('dataLiberacao').value,
                 dataCarregamento: document.getElementById('dataCarregamento').value,
@@ -937,13 +1350,12 @@
                     } else {
                         containers.push(registro);
                     }
-                    
                     limparFormulario();
+                    fecharModalRegistro();
                     atualizarTabela();
                     atualizarDashboard();
-                    
-                    alert('✅ Registro salvo com sucesso!');
-                    openTab('consulta');
+                    atualizarPlanejador();
+                    alert('✅ Container registrado com sucesso!');
                 }
             });
         });
@@ -951,6 +1363,9 @@
         // Limpar formulário
         function limparFormulario() {
             document.getElementById('containerForm').reset();
+            document.getElementById('selectPO').value = '';
+            document.getElementById('selectContainer').value = '';
+            document.getElementById('selectContainer').disabled = true;
             editandoId = null;
         }
 
@@ -966,6 +1381,13 @@
                 containersFiltrados = containers.filter(c => c.statusEntrega === 'entregue');
             }
             
+            // Ordenar por data Entrega TBX (mais recente primeiro)
+            containersFiltrados.sort((a, b) => {
+                const dataA = a.entregaTbx ? new Date(a.entregaTbx) : new Date(0);
+                const dataB = b.entregaTbx ? new Date(b.entregaTbx) : new Date(0);
+                return dataB - dataA; // Ordem decrescente (mais recente primeiro)
+            });
+            
             if (containersFiltrados.length === 0) {
                 tbody.innerHTML = `
                     <tr>
@@ -977,17 +1399,31 @@
                         </td>
                     </tr>
                 `;
+                document.getElementById('paginacao').innerHTML = '';
                 return;
             }
 
-            tbody.innerHTML = containersFiltrados.map(c => {
+            // Calcular paginação
+            const totalPaginas = Math.ceil(containersFiltrados.length / itensPorPagina);
+            const inicio = (paginaAtual - 1) * itensPorPagina;
+            const fim = inicio + itensPorPagina;
+            const containersPagina = containersFiltrados.slice(inicio, fim);
+
+            tbody.innerHTML = containersPagina.map(c => {
                 const isEntregue = c.statusEntrega === 'entregue';
+                let acoes = '';
+                if (usuarioLogado) {
+                    acoes = `
+                        <button class="btn btn-edit" onclick="editarContainer('${c.id}')">✏️ Editar</button>
+                        <button class="btn btn-delete" onclick="excluirRegistro('${c.id}')">🗑️ Excluir</button>
+                    `;
+                }
                 return `
                 <tr>
                     <td>
                         ${isEntregue 
                             ? '<button class="btn btn-status entregue" disabled>✅ Entregue</button>' 
-                            : `<button class="btn btn-status" onclick="marcarComoEntregue(${c.id})">Marcar Entregue</button>`
+                            : (usuarioLogado ? `<button class="btn btn-status" onclick="marcarComoEntregue('${c.id}')">Marcar Entregue</button>` : '<button class="btn btn-status entregue" disabled>✅ Entregue</button>')
                         }
                     </td>
                     <td><strong>${c.refTbx}</strong></td>
@@ -1000,32 +1436,44 @@
                     <td>${c.previsaoDescarregamento || '-'}</td>
                     <td>${c.transportadora || '-'}</td>
                     <td>${formatarMoeda(c.frete)}</td>
-                    <td>
-                        <button class="btn btn-edit" onclick="editarRegistro(${c.id})">✏️ Editar</button>
-                        <button class="btn btn-delete" onclick="excluirRegistro(${c.id})">🗑️ Excluir</button>
-                    </td>
+                    <td>${acoes}</td>
                 </tr>
             `}).join('');
+            
+            // Atualizar paginação
+            atualizarPaginacao(totalPaginas, containersFiltrados.length);
         }
-
-        // Editar registro
-        function editarRegistro(id) {
-            const container = containers.find(c => c.id === id);
-            if (!container) return;
-
-            document.getElementById('refTbx').value = container.refTbx;
-            document.getElementById('container').value = container.container;
-            document.getElementById('vencimentoPorto').value = container.vencimentoPorto;
-            document.getElementById('dataLiberacao').value = container.dataLiberacao;
-            document.getElementById('dataCarregamento').value = container.dataCarregamento;
-            document.getElementById('vencimentoDemurrage').value = container.vencimentoDemurrage;
-            document.getElementById('entregaTbx').value = container.entregaTbx;
-            document.getElementById('previsaoDescarregamento').value = container.previsaoDescarregamento;
-            document.getElementById('transportadora').value = container.transportadora;
-            document.getElementById('frete').value = container.frete ? formatarMoeda(container.frete) : '';
-
-            editandoId = id;
-            openTab('registro');
+        
+        // Atualizar controles de paginação
+        function atualizarPaginacao(totalPaginas, totalItens) {
+            const paginacaoDiv = document.getElementById('paginacao');
+            if (totalPaginas <= 1) {
+                paginacaoDiv.innerHTML = '';
+                return;
+            }
+            
+            const inicio = (paginaAtual - 1) * itensPorPagina + 1;
+            const fim = Math.min(paginaAtual * itensPorPagina, totalItens);
+            
+            let html = '<div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 20px;">';
+            
+            // Botão anterior
+            html += `<button class="btn btn-primary" onclick="mudarPagina(${paginaAtual - 1})" ${paginaAtual === 1 ? 'disabled' : ''}>◀ Anterior</button>`;
+            
+            // Informação da página
+            html += `<span style="color: #cccccc;">Mostrando ${inicio}-${fim} de ${totalItens} registros | Página ${paginaAtual} de ${totalPaginas}</span>`;
+            
+            // Botão próxima
+            html += `<button class="btn btn-primary" onclick="mudarPagina(${paginaAtual + 1})" ${paginaAtual === totalPaginas ? 'disabled' : ''}>Próxima ▶</button>`;
+            
+            html += '</div>';
+            paginacaoDiv.innerHTML = html;
+        }
+        
+        // Mudar de página
+        function mudarPagina(novaPagina) {
+            paginaAtual = novaPagina;
+            atualizarTabela();
         }
 
         // Excluir registro
@@ -1033,9 +1481,10 @@
             if (confirm('Tem certeza que deseja excluir este registro?')) {
                 excluirContainerFirebase(id).then(success => {
                     if (success) {
-                        containers = containers.filter(c => c.id !== id);
+                        containers = containers.filter(c => String(c.id) !== String(id));
                         atualizarTabela();
                         atualizarDashboard();
+                        atualizarPlanejador();
                         alert('✅ Registro excluído com sucesso!');
                     }
                 });
@@ -1057,6 +1506,7 @@
         // Filtrar por status
         function filtrarPorStatus(status) {
             filtroStatusAtual = status;
+            paginaAtual = 1; // Resetar para página 1 ao mudar filtro
             
             // Atualizar sub-tabs visuais
             const subTabs = document.querySelectorAll('.sub-tab');
@@ -1069,7 +1519,7 @@
         // Marcar container como entregue
         function marcarComoEntregue(id) {
             if (confirm('Marcar este container como entregue?')) {
-                const container = containers.find(c => c.id === id);
+                const container = containers.find(c => String(c.id) === String(id));
                 if (container) {
                     container.statusEntrega = 'entregue';
                     
@@ -1077,9 +1527,13 @@
                         if (success) {
                             atualizarTabela();
                             atualizarDashboard();
+                            atualizarPlanejador();
                             alert('✅ Container marcado como entregue!');
                         }
                     });
+                } else {
+                    console.error('Container não encontrado. ID:', id);
+                    alert('❌ Erro: Container não encontrado.');
                 }
             }
         }
@@ -1653,6 +2107,694 @@
                 }
             }
         }
+
+        // ========== PLANEJADOR SEMANAL ==========
+        let previsoes = []; // Array para armazenar previsões de chegada
+        let semanaAtual = 0; // Offset da semana atual (0 = semana atual, 1 = próxima, -1 = anterior)
+
+        // Carregar previsões do Firebase
+        async function carregarPrevisoesFirebase() {
+            try {
+                const snapshot = await db.collection('previsoes').get();
+                previsoes = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+
+                    // Garantir que itens seja um array
+                    if (!Array.isArray(data.itens)) {
+                        data.itens = [];
+                    }
+                    previsoes.push({ id: doc.id, ...data });
+                });
+                console.log('Previsões carregadas:', previsoes); // Debug
+                atualizarPlanejador();
+            } catch (error) {
+                console.error('Erro ao carregar previsões:', error);
+            }
+        }
+
+        // Salvar previsão no Firebase
+        async function salvarPrevisaoFirebase(previsao) {
+            try {
+                await db.collection('previsoes').doc(String(previsao.id)).set(previsao);
+                return true;
+           
+                                 
+                      
+            } catch (error) {
+                console.error('Erro ao salvar previsão:', error);
+                alert('❌ Erro ao salvar no Firebase. Tente novamente.');
+                return false;
+            }
+        }
+
+        // Excluir previsão do Firebase
+        async function excluirPrevisaoFirebase(id) {
+            try {
+                await db.collection('previsoes').doc(String(id)).delete();
+                return true;
+            } catch (error) {
+                console.error('Erro ao excluir previsão:', error);
+                alert('❌ Erro ao excluir do Firebase.');
+                return false;
+            }
+        }
+
+        // Limpar containers duplicados (com / e sem itens)
+        async function limparDuplicadosFirebase() {
+            if (!confirm('Deseja remover containers duplicados sem itens do banco de dados?')) {
+                return;
+            }
+            
+            try {
+                const snapshot = await db.collection('previsoes').get();
+                let removidos = 0;
+                const promises = [];
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    // Remove se: tem "/" no container E não tem itens (ou array vazio)
+                    if (data.container && data.container.includes('/')) {
+                        if (!data.itens || !Array.isArray(data.itens) || data.itens.length === 0) {
+                            console.log('Removendo duplicado:', data.container, doc.id);
+                            promises.push(db.collection('previsoes').doc(doc.id).delete());
+                            removidos++;
+                        }
+                    }
+                });
+                
+                await Promise.all(promises);
+                alert(`✅ ${removidos} container(s) duplicado(s) removido(s)!`);
+                await carregarPrevisoesFirebase();
+            } catch (error) {
+                console.error('Erro ao limpar duplicados:', error);
+                alert('❌ Erro ao limpar duplicados.');
+            }
+        }
+
+        // Importar arquivo de previsão
+        function importarPrevisao(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                    const rows = jsonData.slice(1);
+                    
+                    // Agrupar produtos por container
+                    const containersAgrupados = {};
+                    
+                    rows.forEach(row => {
+                        if (!row[0]) return;
+
+                        // Limpar número do container (pegar apenas antes da / ou primeiros 11 dígitos)
+                        let containerNumero = String(row[3] || '');
+                        if (containerNumero.includes('/')) {
+                            containerNumero = containerNumero.split('/')[0].trim();
+                        } else {
+                            containerNumero = containerNumero.substring(0, 11).trim();
+                        }
+
+                        const chave = `${row[0]}_${containerNumero}`; // PO + Container como chave única
+
+                        if (!containersAgrupados[chave]) {
+                            containersAgrupados[chave] = {
+                                id: Date.now() + Math.random(),
+                                po: String(row[0] || ''),
+                                fornecedor: String(row[1] || ''),
+                                blNr: String(row[2] || ''),
+                                container: containerNumero,
+                                itens: [],
+                                dataEmbarque: converterDataExcel(row[8]),
+                                status: 'aguardando',
+                                dataDescarregamento: '',
+                                horaDescarregamento: '',
+                                observacoes: ''
+                            };
+                        }
+
+                        // Adicionar item à lista de itens do container
+                        if (row[4]) { // Só adiciona se tiver item
+                            containersAgrupados[chave].itens.push({
+                                item: String(row[4] || ''),
+                                quantidade: Number(row[5]) || 0,
+                                tipo: String(row[6] || '')
+                            });
+                        }
+                    });
+
+                    // **LIMPAR TODOS OS DADOS ANTIGOS DO FIREBASE**
+                    console.log('Removendo dados antigos do Firebase...');
+                    const snapshotAntigo = await db.collection('previsoes').get();
+                    const deletePromises = [];
+                    snapshotAntigo.forEach(doc => {
+                        deletePromises.push(db.collection('previsoes').doc(doc.id).delete());
+                    });
+                    await Promise.all(deletePromises);
+                    console.log(`${deletePromises.length} registro(s) antigo(s) removido(s)`);
+
+                    // Limpar array local
+                    previsoes = [];
+
+                    // Salvar containers agrupados
+                    const promises = [];
+                    const containersArray = Object.values(containersAgrupados);
+                    
+                    console.log('Containers agrupados:', containersArray); // Debug
+                    
+                    containersArray.forEach(container => {
+                        previsoes.push(container);
+                        promises.push(salvarPrevisaoFirebase(container));
+                    });
+
+                    await Promise.all(promises);
+                    atualizarPlanejador();
+                    alert(`✅ ${containersArray.length} container(s) importado(s) com ${containersArray.reduce((acc, c) => acc + c.itens.length, 0)} itens!\n(Dados anteriores foram removidos)`);
+                    event.target.value = '';
+                } catch (error) {
+                    console.error('Erro ao importar:', error);
+                    alert('❌ Erro ao importar arquivo. Verifique o formato e tente novamente.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Obter intervalo de datas da semana
+        function obterIntervaloSemana(offset) {
+            const hoje = new Date();
+            const primeiroDia = new Date(hoje);
+            primeiroDia.setDate(hoje.getDate() - hoje.getDay() + (offset * 7)); // Domingo da semana
+            
+            const dias = [];
+            for (let i = 0; i < 7; i++) {
+                const dia = new Date(primeiroDia);
+                dia.setDate(primeiroDia.getDate() + i);
+                dias.push(dia);
+            }
+            return dias;
+        }
+
+        // Formatar data para exibição
+        function formatarDataExibicao(data) {
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            return `${dia}/${mes}`;
+        }
+
+        // Obter nome do dia da semana
+        function obterNomeDia(data) {
+            const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+            return dias[data.getDay()];
+        }
+
+        // Verificar se é hoje
+        function ehHoje(data) {
+            const hoje = new Date();
+            return data.toDateString() === hoje.toDateString();
+        }
+
+        // Atualizar planejador semanal
+        function atualizarPlanejador() {
+            const diasSemana = obterIntervaloSemana(semanaAtual);
+            // Atualizar título
+            const primeiraData = formatarDataExibicao(diasSemana[0]);
+            const ultimaData = formatarDataExibicao(diasSemana[6]);
+            document.getElementById('tituloSemana').textContent = 
+                `Semana de ${primeiraData} a ${ultimaData}`;
+
+            // Inicializar totais
+            let containersUnicosSemana = new Set();
+            let totalItens = new Set();
+            let totalUnidades = 0;
+
+            // Gerar calendário
+            const calendarioDiv = document.getElementById('calendarioSemanal');
+            calendarioDiv.innerHTML = '';
+
+            // Função para criar card do dia
+            function criarCardDia(dia) {
+                const diaStr = dia.toISOString().split('T')[0];
+                const previsoesNoDia = previsoes.filter(p => p.dataEmbarque === diaStr);
+                const diaCard = document.createElement('div');
+                // Adicionar classes para sabado/domingo
+                const diaSemana = dia.getDay();
+                let extraClass = '';
+                if (diaSemana === 0) extraClass = 'domingo';
+                if (diaSemana === 6) extraClass = 'sabado';
+                diaCard.className = `dia-card ${ehHoje(dia) ? 'hoje' : ''} ${extraClass}`;
+
+                let containersDoDia = new Set();
+                previsoesNoDia.forEach(p => {
+                    containersDoDia.add(p.container);
+                    containersUnicosSemana.add(p.container);
+                    // Contar itens agrupados
+                    if (p.itens && Array.isArray(p.itens)) {
+                        p.itens.forEach(item => {
+                            totalItens.add(item.item);
+                            totalUnidades += Number(item.quantidade) || 0;
+                        });
+                    }
+                });
+
+                // Adicionar cálculo de pallets por item
+                function getPalletsForItem(codigo, quantidade) {
+                    const param = parametrosPallet.find(p => p.codigo === codigo);
+                    if (param && param.quantidade > 0) {
+                        return Math.ceil(Number(quantidade) / param.quantidade);
+                    }
+                    return null;
+                }
+
+                // Calcular total de pallets do dia
+                let totalPalletsDia = 0;
+                previsoesNoDia.forEach(p => {
+                    if (p.itens && Array.isArray(p.itens)) {
+                        p.itens.forEach(item => {
+                            const pallets = getPalletsForItem(item.item, item.quantidade);
+                            if (pallets !== null) totalPalletsDia += pallets;
+                        });
+                    }
+                });
+
+                diaCard.innerHTML = `
+                    <div class="dia-card-header">
+                        <h4>${obterNomeDia(dia)}</h4>
+                        <div class="data">${formatarDataExibicao(dia)}</div>
+                        <div style="display: flex; align-items: center; gap: 8px; color: #858585; font-size: 13px; flex-wrap: nowrap; white-space: nowrap;">
+                            <span>${containersDoDia.size} container(s)</span>
+                            ${totalPalletsDia > 0 ? `<span style='color:#4fc3f7;' title='Total de pallets do dia'>- ${totalPalletsDia} pallet${totalPalletsDia > 1 ? 's' : ''}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="dia-card-body">
+                        ${previsoesNoDia.length === 0 
+                            ? '<p style="text-align: center; color: #858585; padding: 20px;">Nenhum container previsto</p>'
+                            : previsoesNoDia.map(p => {
+                                let itensHTML = '';
+                                if (p.itens && Array.isArray(p.itens) && p.itens.length > 0) {
+                                    itensHTML = p.itens.map(item => {
+                                        const pallets = getPalletsForItem(item.item, item.quantidade);
+                                        return `
+                                            <div style=\"display:flex; align-items:center; margin-left: 10px; font-size: 11px; gap: 8px; flex-wrap:nowrap; white-space:nowrap;\">
+                                                <span class=\"produto\">${item.item}</span>
+                                                <span class=\"quantidade\" style=\"margin-left: 10px; display:flex; align-items:center; gap:6px; white-space:nowrap;\">
+                                                    ${item.quantidade} ${item.tipo}
+                                                    ${pallets !== null ? `<span style='color:#4fc3f7;' title='Qtd. de pallets necessária'>(${pallets} pallet${pallets > 1 ? 's' : ''})</span>` : ''}
+                                                </span>
+                                            </div>
+                                        `;
+                                    }).join('');
+                                } else {
+                                    itensHTML = '<div class="produto" style="color: #858585;">Sem itens</div>';
+                                }
+                                return `
+                                    <div class="container-item">
+                                        <strong>${p.container}</strong>
+                                        ${itensHTML}
+                                    </div>
+                                `;
+                            }).join('')
+                        }
+                    </div>
+                `;
+                return diaCard;
+            }
+
+            // Renderizar todos os dias na ordem original
+            diasSemana.forEach(dia => {
+                calendarioDiv.appendChild(criarCardDia(dia));
+            });
+
+            // Atualizar totais
+            document.getElementById('totalContainersSemana').textContent = containersUnicosSemana.size;
+            document.getElementById('totalItensSemana').textContent = totalItens.size;
+            document.getElementById('totalUnidadesSemana').textContent = totalUnidades.toLocaleString('pt-BR');
+
+            // Atualizar tabela de produtos
+            atualizarTabelaProdutos(diasSemana);
+        }
+        
+        // Navegar entre semanas
+        function navegarSemana(direcao) {
+            semanaAtual += direcao;
+            atualizarPlanejador();
+        }
+
+        // Atualizar tabela de produtos esperados
+        function atualizarTabelaProdutos(diasSemana) {
+            const tbody = document.getElementById('produtosSemanaBody');
+            
+            const inicio = diasSemana[0].toISOString().split('T')[0];
+            const fim = diasSemana[6].toISOString().split('T')[0];
+            
+            const previsoesSemana = previsoes.filter(p => p.dataEmbarque >= inicio && p.dataEmbarque <= fim);
+            
+            if (previsoesSemana.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <div>
+                                <div style="font-size: 3em;">📦</div>
+                                <p>Nenhum produto previsto para esta semana.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Agrupar por produto considerando itens dentro dos containers
+            const produtosAgrupados = {};
+            previsoesSemana.forEach(p => {
+                if (p.itens && Array.isArray(p.itens)) {
+                    p.itens.forEach(item => {
+                        if (!produtosAgrupados[item.item]) {
+                            produtosAgrupados[item.item] = {
+                                containers: new Set(),
+                                quantidade: 0,
+                                tipo: item.tipo
+                            };
+                        }
+                        produtosAgrupados[item.item].containers.add(p.container);
+                        produtosAgrupados[item.item].quantidade += Number(item.quantidade) || 0;
+                    });
+                }
+            });
+
+            tbody.innerHTML = Object.keys(produtosAgrupados)
+                .sort()
+                .map(item => {
+                    const dados = produtosAgrupados[item];
+                    // Cálculo de pallets
+                    const param = parametrosPallet.find(p => p.codigo === item);
+                    let pallets = null;
+                    if (param && param.quantidade > 0) {
+                        pallets = Math.ceil(Number(dados.quantidade) / param.quantidade);
+                    }
+                    return `
+                        <tr>
+                            <td>${item}</td>
+                            <td>${dados.containers.size} container(s)</td>
+                            <td><strong style="color: #4fc3f7;">${dados.quantidade.toLocaleString('pt-BR')}</strong>
+                                ${pallets !== null ? `<span style='color:#4fc3f7; margin-left:8px;' title='Qtd. de pallets necessária'>(${pallets} pallet${pallets > 1 ? 's' : ''})</span>` : ''}
+                            </td>
+                            <td>${dados.tipo}</td>
+                        </tr>
+                    `;
+                }).join('');
+        }
+
+        // Atualizar timeline de descarregamento (agora mostra todos os containers registrados)
+        function atualizarTimeline(diasSemana) {
+            const tbody = document.getElementById('timelineBody');
+            
+            // Se o elemento não existe (foi removido), não faz nada
+            if (!tbody) return;
+            
+            // Mostrar todos os containers, não apenas da semana
+            const todosContainers = containers;
+            
+            if (todosContainers.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <div>
+                                <div style="font-size: 3em;">📦</div>
+                                <p>Nenhum container registrado.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Ordenar por data de vencimento demurrage
+            const containersOrdenados = [...todosContainers].sort((a, b) => {
+                if (!a.vencimentoDemurrage) return 1;
+                if (!b.vencimentoDemurrage) return -1;
+                return new Date(a.vencimentoDemurrage) - new Date(b.vencimentoDemurrage);
+            });
+
+            tbody.innerHTML = containersOrdenados
+                .map(c => {
+                    const statusClass = 
+                        c.statusEntrega === 'entregue' ? 'status-concluido' : 'status-aguardando';
+                    const statusTexto = c.statusEntrega === 'entregue' ? 'Entregue' : 'Pendente';
+                    
+                    // Buscar dados de previsão se existir
+                    const previsao = previsoes.find(p => p.container === c.container);
+                    const po = previsao ? previsao.po : '-';
+                    const fornecedor = previsao ? previsao.fornecedor : '-';
+                    const previsaoChegada = previsao && previsao.dataEmbarque 
+                        ? new Date(previsao.dataEmbarque + 'T00:00:00').toLocaleDateString('pt-BR') 
+                        : '-';
+                    
+                    return `
+                        <tr>
+                            <td><strong>${c.container}</strong></td>
+                            <td>${c.refTbx}</td>
+                            <td>${po}</td>
+                            <td>${fornecedor}</td>
+                            <td>${previsaoChegada}</td>
+                            <td>${c.vencimentoDemurrage ? new Date(c.vencimentoDemurrage + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}</td>
+                            <td>${c.transportadora || '-'}</td>
+                            <td>${c.frete ? formatarMoeda(c.frete) : '-'}</td>
+                            <td>
+                                <span class="status-badge ${statusClass}">${statusTexto}</span>
+                            </td>
+                            <td>
+                                <button class="btn btn-edit" onclick="editarContainer('${c.id}')" style="padding: 4px 8px; font-size: 12px;">✏️</button>
+                                ${c.statusEntrega !== 'entregue' 
+                                    ? `<button class="btn btn-status" onclick="marcarComoEntregue('${c.id}')" style="padding: 4px 8px; font-size: 12px;">✅</button>`
+                                    : ''
+                                }
+                                <button class="btn btn-delete" onclick="excluirRegistro('${c.id}')" style="padding: 4px 8px; font-size: 12px;">🗑️</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+        }
+
+        // Abrir modal de registro
+        function abrirModalRegistro() {
+            document.getElementById('modalRegistro').style.display = 'block';
+            editandoId = null;
+            limparFormulario();
+            carregarListaPOs();
+        }
+
+        // Carregar lista de POs/Lotes únicos da programação
+        function carregarListaPOs() {
+            const selectPO = document.getElementById('selectPO');
+            const pos = [...new Set(previsoes.map(p => p.po))].filter(po => po).sort();
+            
+            selectPO.innerHTML = '<option value="">Selecione uma PO</option>';
+            pos.forEach(po => {
+                const option = document.createElement('option');
+                option.value = po;
+                option.textContent = po;
+                selectPO.appendChild(option);
+            });
+        }
+
+        // Carregar containers de uma PO específica
+        function carregarContainersPorPO() {
+            const selectPO = document.getElementById('selectPO');
+            const selectContainer = document.getElementById('selectContainer');
+            const poSelecionada = selectPO.value;
+            
+            if (!poSelecionada) {
+                selectContainer.disabled = true;
+                selectContainer.innerHTML = '<option value="">Selecione um container</option>';
+                return;
+            }
+            
+            // Buscar containers únicos dessa PO (já agrupados)
+            // Remover containers já programados (presentes em 'containers')
+            const containersData = previsoes.filter(p => p.po === poSelecionada);
+            // Obter pares já programados (refTbx + container)
+            const programados = new Set(containers.map(c => `${c.refTbx}__${c.container}`));
+
+            selectContainer.innerHTML = '<option value="">Selecione um container</option>';
+            containersData.forEach(data => {
+                // Só mostra se ainda não foi programado
+                if (!programados.has(`${poSelecionada}__${data.container}`)) {
+                    const option = document.createElement('option');
+                    option.value = JSON.stringify({
+                        container: data.container,
+                        fornecedor: data.fornecedor,
+                        dataEmbarque: data.dataEmbarque,
+                        itens: data.itens
+                    });
+                    option.textContent = data.container;
+                    selectContainer.appendChild(option);
+                }
+            });
+            selectContainer.disabled = false;
+        }
+
+        // Preencher dados do container selecionado
+        function preencherDadosContainer() {
+            const selectPO = document.getElementById('selectPO');
+            const selectContainer = document.getElementById('selectContainer');
+            const containerData = selectContainer.value;
+            
+            if (!containerData) return;
+            
+            const dados = JSON.parse(containerData);
+            const poSelecionada = selectPO.value;
+            
+            // Preencher campos
+            document.getElementById('refTbx').value = poSelecionada;
+            document.getElementById('container').value = dados.container;
+            
+            // Se tiver data de embarque, sugerir vencimento demurrage (embarque + 30 dias por exemplo)
+            if (dados.dataEmbarque) {
+                const dataEmbarque = new Date(dados.dataEmbarque + 'T00:00:00');
+                const vencDemurrage = new Date(dataEmbarque);
+                vencDemurrage.setDate(vencDemurrage.getDate() + 30);
+                document.getElementById('vencimentoDemurrage').value = vencDemurrage.toISOString().split('T')[0];
+                
+                const vencPorto = new Date(dataEmbarque);
+                vencPorto.setDate(vencPorto.getDate() + 20);
+                document.getElementById('vencimentoPorto').value = vencPorto.toISOString().split('T')[0];
+            }
+        }
+
+        // Fechar modal de registro
+        function fecharModalRegistro() {
+            document.getElementById('modalRegistro').style.display = 'none';
+            editandoId = null;
+            limparFormulario();
+        }
+
+        // Editar container existente
+        function editarContainer(id) {
+                        if (!usuarioLogado) {
+                            alert('Faça login para excluir registros.');
+                            return;
+                        }
+                        if (confirm('Tem certeza que deseja excluir este registro?')) {
+                            excluirContainerFirebase(id).then(success => {
+                                if (success) {
+                                    // Só remove do array local se realmente excluiu do Firebase
+                                    containers = containers.filter(c => String(c.id) !== String(id));
+                                    atualizarTabela();
+                                    atualizarDashboard();
+                                    atualizarPlanejador();
+                                    alert('✅ Registro excluído com sucesso!');
+                                } else {
+                                    alert('Erro ao excluir do servidor. Tente novamente.');
+                                }
+                            });
+                        }
+            
+            document.getElementById('refTbx').value = container.refTbx || '';
+            document.getElementById('container').value = container.container || '';
+            document.getElementById('vencimentoPorto').value = container.vencimentoPorto || '';
+            document.getElementById('dataLiberacao').value = container.dataLiberacao || '';
+            document.getElementById('dataCarregamento').value = container.dataCarregamento || '';
+            document.getElementById('vencimentoDemurrage').value = container.vencimentoDemurrage || '';
+            document.getElementById('entregaTbx').value = container.entregaTbx || '';
+            document.getElementById('previsaoDescarregamento').value = container.previsaoDescarregamento || '';
+            document.getElementById('transportadora').value = container.transportadora || '';
+            document.getElementById('frete').value = container.frete ? formatarMoeda(container.frete) : '';
+
+            abrirModalRegistro();
+        }
+
+        // Parâmetros de peças por pallet
+        let parametrosPallet = JSON.parse(localStorage.getItem('parametrosPallet' || '[]'));
+
+        function atualizarTabelaParametrosPallet() {
+            const tbody = document.getElementById('parametrosPalletTableBody');
+            if (!tbody) return;
+            if (parametrosPallet.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="empty-state"><div><div style="font-size: 3em;">📦</div><p>Nenhum parâmetro cadastrado. Adicione um novo acima.</p></div></td></tr>`;
+                return;
+            }
+            tbody.innerHTML = parametrosPallet.map((p, i) => `
+                <tr>
+                    <td><strong>${p.codigo}</strong></td>
+                    <td>${p.quantidade}</td>
+                    <td>VOL</td>
+                    <td><button class="btn btn-delete" onclick="excluirParametroPallet(${i})">🗑️ Excluir</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function excluirParametroPallet(idx) {
+            if (confirm('Deseja excluir este parâmetro?')) {
+                parametrosPallet.splice(idx, 1);
+                localStorage.setItem('parametrosPallet', JSON.stringify(parametrosPallet));
+                atualizarTabelaParametrosPallet();
+            }
+        }
+
+        document.getElementById('parametroPalletForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const codigo = document.getElementById('codigoPallet').value.trim().toUpperCase();
+            const quantidade = parseInt(document.getElementById('quantidadePallet').value, 10);
+            if (!codigo || !quantidade) {
+                alert('Preencha todos os campos!');
+                return;
+            }
+            if (parametrosPallet.some(p => p.codigo === codigo)) {
+                alert('Este código já está cadastrado!');
+                return;
+            }
+            parametrosPallet.push({ codigo, quantidade });
+            localStorage.setItem('parametrosPallet', JSON.stringify(parametrosPallet));
+            atualizarTabelaParametrosPallet();
+            e.target.reset();
+        });
+
+        // Importação de parâmetros por arquivo
+        const inputImportar = document.getElementById('importarParametrosPalletInput');
+        if (inputImportar) {
+            inputImportar.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    let data, rows;
+                    if (file.name.endsWith('.csv')) {
+                        data = ev.target.result.split(/\r?\n/).map(l => l.split(';').map(x => x.trim()));
+                        rows = data.filter(r => r[0] && r[1]);
+                    } else {
+                        const workbook = XLSX.read(ev.target.result, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                    }
+                    let count = 0;
+                    rows.forEach(row => {
+                        const codigo = String(row[0] || '').toUpperCase().trim();
+                        const quantidade = parseInt(row[1], 10);
+                        if (codigo && quantidade && !parametrosPallet.some(p => p.codigo === codigo)) {
+                            parametrosPallet.push({ codigo, quantidade });
+                            count++;
+                        }
+                    });
+                    localStorage.setItem('parametrosPallet', JSON.stringify(parametrosPallet));
+                    atualizarTabelaParametrosPallet();
+                    alert(`✅ ${count} parâmetro(s) importado(s)!`);
+                    e.target.value = '';
+                };
+                if (file.name.endsWith('.csv')) {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsArrayBuffer(file);
+                }
+            });
+        }
+
+        // Atualizar tabela ao carregar
+        window.addEventListener('DOMContentLoaded', atualizarTabelaParametrosPallet);
     </script>
 </body>
 </html>
