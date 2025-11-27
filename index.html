@@ -2213,13 +2213,14 @@
                     rows.forEach(row => {
                         if (!row[0]) return;
 
-                        // Limpar número do container (pegar apenas antes da / ou primeiros 11 dígitos)
-                        let containerNumero = String(row[3] || '');
+                        // Sempre pegar os 11 primeiros dígitos do número do container, ignorando qualquer coisa após barra ou espaço
+                        let containerNumero = String(row[3] || '').replace(/\s/g, '');
+                        // Se houver barra, pega só o que está antes
                         if (containerNumero.includes('/')) {
-                            containerNumero = containerNumero.split('/')[0].trim();
-                        } else {
-                            containerNumero = containerNumero.substring(0, 11).trim();
+                            containerNumero = containerNumero.split('/')[0];
                         }
+                        // Garante que só os 11 primeiros caracteres (número do container)
+                        containerNumero = containerNumero.substring(0, 11).toUpperCase();
 
                         const chave = `${row[0]}_${containerNumero}`; // PO + Container como chave única
 
