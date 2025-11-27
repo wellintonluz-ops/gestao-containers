@@ -2710,7 +2710,16 @@
         }
 
         // Parâmetros de peças por pallet
-        let parametrosPallet = JSON.parse(localStorage.getItem('parametrosPallet' || '[]'));
+        let parametrosPallet = [];
+        try {
+            const raw = localStorage.getItem('parametrosPallet');
+            if (raw) {
+                parametrosPallet = JSON.parse(raw);
+                if (!Array.isArray(parametrosPallet)) parametrosPallet = [];
+            }
+        } catch (e) {
+            parametrosPallet = [];
+        }
 
         function atualizarTabelaParametrosPallet() {
             const tbody = document.getElementById('parametrosPalletTableBody');
