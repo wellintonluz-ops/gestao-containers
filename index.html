@@ -323,11 +323,12 @@
         }
 
         th {
-                
-            text-align: left;
-            font-weight: 600;
-            font-size: 13px;
-            white-space: nowrap;
+                height: 48px;
+                text-align: center;
+                vertical-align: middle;
+                font-weight: 700;
+                font-size: 17px;
+                white-space: nowrap;
         }
 
         td {
@@ -335,6 +336,7 @@
             border-bottom: 1px solid #3e3e42;
             font-size: 13px;
             color: #cccccc;
+            text-align: center;
         }
 
         tbody tr:hover {
@@ -1382,10 +1384,18 @@
             }
             
             // Ordenar por data Entrega TBX (mais recente primeiro)
+            // Ordenar por data e hora (mais antigo para mais recente)
             containersFiltrados.sort((a, b) => {
-                const dataA = a.entregaTbx ? new Date(a.entregaTbx) : new Date(0);
-                const dataB = b.entregaTbx ? new Date(b.entregaTbx) : new Date(0);
-                return dataB - dataA; // Ordem decrescente (mais recente primeiro)
+                // Data de entrega
+                const dataA = a.entregaTbx ? new Date(a.entregaTbx) : new Date(8640000000000000); // data máxima se vazio
+                const dataB = b.entregaTbx ? new Date(b.entregaTbx) : new Date(8640000000000000);
+                // Hora prevista (formato HH:MM)
+                const horaA = a.previsaoDescarregamento ? a.previsaoDescarregamento : '00:00';
+                const horaB = b.previsaoDescarregamento ? b.previsaoDescarregamento : '00:00';
+                // Compor data+hora
+                const dataHoraA = new Date(dataA.toISOString().split('T')[0] + 'T' + horaA);
+                const dataHoraB = new Date(dataB.toISOString().split('T')[0] + 'T' + horaB);
+                return dataHoraA - dataHoraB; // Ordem crescente (mais antigo primeiro)
             });
             
             if (containersFiltrados.length === 0) {
