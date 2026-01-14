@@ -1122,37 +1122,52 @@
         let filtroStatusAtual = 'pendente'; // Filtro padrão: pendente
         let anoSelecionado = 'todos'; // Ano padrão: todos
         let graficoMensal = null; // Variável para armazenar instância do gráfico
+        let unsubscribeContainers = null;
+        let unsubscribeTransportadoras = null;
+        let unsubscribePrevisoes = null;
         
         // Paginação
         let paginaAtual = 1;
         const itensPorPagina = 20;
 
-        // Carregar dados ao iniciar
+        // Carregar dados ao iniciar com atualização em tempo real
         window.onload = function() {
-            carregarDadosFirebase();
+            iniciarListenersTempoReal();
         };
 
-        // Carregar dados do Firebase
-        async function carregarDadosFirebase() {
+        // Configurar listeners em tempo real
+        function iniciarListenersTempoReal() {
             try {
-                // Carregar containers
-                const containersSnapshot = await db.collection('containers').get();
-                containers = containersSnapshot.docs.map(doc => doc.data());
+                // Containers
+                if (unsubscribeContainers) unsubscribeContainers();
+                unsubscribeContainers = db.collection('containers').onSnapshot(snapshot => {
+                    containers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    atualizarTabela();
+                    atualizarDashboard();
+                    atualizarPlanejador();
+                });
 
-                // Carregar transportadoras
-                const transportadorasSnapshot = await db.collection('transportadoras').get();
-                transportadoras = transportadorasSnapshot.docs.map(doc => doc.data().nome).sort();
+                // Transportadoras
+                if (unsubscribeTransportadoras) unsubscribeTransportadoras();
+                unsubscribeTransportadoras = db.collection('transportadoras').onSnapshot(snapshot => {
+                    transportadoras = snapshot.docs.map(doc => doc.data().nome).sort();
+                    carregarTransportadoras();
+                    atualizarTabelaTransportadoras();
+                });
 
-                // Carregar previsões
-                await carregarPrevisoesFirebase();
-
-                // Atualizar interface
-                atualizarTabela();
-                atualizarDashboard();
-                carregarTransportadoras();
+                // Previsões
+                if (unsubscribePrevisoes) unsubscribePrevisoes();
+                unsubscribePrevisoes = db.collection('previsoes').onSnapshot(snapshot => {
+                    previsoes = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        if (!Array.isArray(data.itens)) data.itens = [];
+                        return { id: doc.id, ...data };
+                    });
+                    atualizarPlanejador();
+                });
             } catch (error) {
-                console.error('Erro ao carregar dados:', error);
-                alert('⚠️ Erro ao carregar dados do servidor.');
+                console.error('Erro ao iniciar listeners em tempo real:', error);
+                alert('⚠️ Erro ao conectar em tempo real com o servidor.');
             }
         }
 
@@ -1382,20 +1397,23 @@
             } else if (filtroStatusAtual === 'entregue') {
                 containersFiltrados = containers.filter(c => c.statusEntrega === 'entregue');
             }
-            
-            // Ordenar por data Entrega TBX (mais recente primeiro)
-            // Ordenar por data e hora (mais antigo para mais recente)
-            containersFiltrados.sort((a, b) => {
-                // Data de entrega
-                const dataA = a.entregaTbx ? new Date(a.entregaTbx) : new Date(8640000000000000); // data máxima se vazio
-                const dataB = b.entregaTbx ? new Date(b.entregaTbx) : new Date(8640000000000000);
-                // Hora prevista (formato HH:MM)
-                const horaA = a.previsaoDescarregamento ? a.previsaoDescarregamento : '00:00';
-                const horaB = b.previsaoDescarregamento ? b.previsaoDescarregamento : '00:00';
-                // Compor data+hora
-                const dataHoraA = new Date(dataA.toISOString().split('T')[0] + 'T' + horaA);
-                const dataHoraB = new Date(dataB.toISOString().split('T')[0] + 'T' + horaB);
-                return dataHoraA - dataHoraB; // Ordem crescente (mais antigo primeiro)
+
+            // Ordenação por data de entrega + previsão descarga
+            const direcao = filtroStatusAtual === 'pendente' ? 'asc' : 'desc';
+            const containersOrdenados = [...containersFiltrados].sort((a, b) => {
+                const montarTimestamp = (reg) => {
+                    if (reg.entregaTbx) {
+                        const data = new Date(reg.entregaTbx).toISOString().split('T')[0];
+                        const hora = reg.previsaoDescarregamento || '00:00';
+                        return new Date(`${data}T${hora}`).getTime();
+                    }
+                    return direcao === 'desc' ? 0 : Number.POSITIVE_INFINITY; // sem entrega vai para o fim
+                };
+
+                const tsA = montarTimestamp(a);
+                const tsB = montarTimestamp(b);
+
+                return direcao === 'asc' ? tsA - tsB : tsB - tsA;
             });
             
             if (containersFiltrados.length === 0) {
@@ -1414,10 +1432,10 @@
             }
 
             // Calcular paginação
-            const totalPaginas = Math.ceil(containersFiltrados.length / itensPorPagina);
+            const totalPaginas = Math.ceil(containersOrdenados.length / itensPorPagina);
             const inicio = (paginaAtual - 1) * itensPorPagina;
             const fim = inicio + itensPorPagina;
-            const containersPagina = containersFiltrados.slice(inicio, fim);
+            const containersPagina = containersOrdenados.slice(inicio, fim);
 
             tbody.innerHTML = containersPagina.map(c => {
                 const isEntregue = c.statusEntrega === 'entregue';
@@ -1433,7 +1451,9 @@
                     <td>
                         ${isEntregue 
                             ? '<button class="btn btn-status entregue" disabled>✅ Entregue</button>' 
-                            : (usuarioLogado ? `<button class="btn btn-status" onclick="marcarComoEntregue('${c.id}')">Marcar Entregue</button>` : '<button class="btn btn-status entregue" disabled>✅ Entregue</button>')
+                            : (usuarioLogado 
+                                ? `<button class="btn btn-status" onclick="marcarComoEntregue('${c.id}')">Marcar Entregue</button>` 
+                                : '<span class="status-badge status-pendente">⏳ Pendente</span>')
                         }
                     </td>
                     <td><strong>${c.refTbx}</strong></td>
@@ -1513,6 +1533,15 @@
             }
         }
 
+        // Data de referência única para filtros/agrupamentos (prioriza entrega real)
+        function obterDataReferencia(container) {
+            return container.entregaTbx
+                || container.dataCarregamento
+                || container.vencimentoDemurrage
+                || container.vencimentoPorto
+                || null;
+        }
+
         // Filtrar por status
         function filtrarPorStatus(status) {
             filtroStatusAtual = status;
@@ -1585,7 +1614,7 @@
             let containersFiltradosPorAno = containers;
             if (anoSelecionado !== 'todos') {
                 containersFiltradosPorAno = containers.filter(c => {
-                    const dataRef = c.dataCarregamento || c.vencimentoDemurrage || c.vencimentoPorto;
+                    const dataRef = obterDataReferencia(c);
                     if (dataRef) {
                         const ano = new Date(dataRef).getFullYear();
                         return ano.toString() === anoSelecionado;
@@ -1648,7 +1677,7 @@
             const anos = new Set();
 
             containers.forEach(c => {
-                const dataRef = c.dataCarregamento || c.vencimentoDemurrage || c.vencimentoPorto;
+                const dataRef = obterDataReferencia(c);
                 if (dataRef) {
                     const ano = new Date(dataRef).getFullYear();
                     anos.add(ano);
@@ -1739,7 +1768,7 @@
 
             // Preencher com dados reais
             containersFiltrados.forEach(c => {
-                const dataRef = c.dataCarregamento || c.vencimentoDemurrage || c.vencimentoPorto;
+                const dataRef = obterDataReferencia(c);
                 if (dataRef) {
                     const data = new Date(dataRef);
                     const mes = data.getMonth();
@@ -1752,16 +1781,25 @@
             const labels = meses;
             const quantidades = meses.map((_, index) => dadosPorMes[index].quantidade);
             const valores = meses.map((_, index) => dadosPorMes[index].valorTotal);
-            
-            // Calcular média de quantidade
-            const somaQuantidades = quantidades.reduce((sum, q) => sum + q, 0);
-            const mediaQuantidade = containersFiltrados.length > 0 ? somaQuantidades / 12 : 0;
-            const linhaMedia = Array(12).fill(mediaQuantidade);
 
-            // Calcular média de valor
-            const somaValores = valores.reduce((sum, v) => sum + v, 0);
-            const mediaValor = containersFiltrados.length > 0 ? somaValores / 12 : 0;
-            const linhaMediaValor = Array(12).fill(mediaValor);
+            // Médias acumuladas apenas com meses do ano selecionado que já têm dados
+            const linhaMedia = [];
+            const linhaMediaValor = [];
+            let somaQuantAcumulada = 0;
+            let somaValorAcumulado = 0;
+            let mesesComDados = 0;
+
+            for (let i = 0; i < 12; i++) {
+                const temDadoMes = quantidades[i] > 0 || valores[i] > 0;
+                if (temDadoMes) {
+                    mesesComDados++;
+                    somaQuantAcumulada += quantidades[i];
+                    somaValorAcumulado += valores[i];
+                }
+                const divisor = mesesComDados || 1;
+                linhaMedia.push(mesesComDados ? somaQuantAcumulada / divisor : 0);
+                linhaMediaValor.push(mesesComDados ? somaValorAcumulado / divisor : 0);
+            }
 
             // Criar gráfico
             graficoMensal = new Chart(ctx, {
@@ -2423,9 +2461,13 @@
                                 } else {
                                     itensHTML = '<div class="produto" style="color: #858585;">Sem itens</div>';
                                 }
+                                const lote = p.po ? `Lote ${p.po}` : 'Lote não informado';
                                 return `
                                     <div class="container-item">
-                                        <strong>${p.container}</strong>
+                                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                            <strong>${p.container}</strong>
+                                            <span style="color:#4fc3f7; font-size:11px;">${lote}</span>
+                                        </div>
                                         ${itensHTML}
                                     </div>
                                 `;
@@ -2686,25 +2728,24 @@
 
         // Editar container existente
         function editarContainer(id) {
-                        if (!usuarioLogado) {
-                            alert('Faça login para excluir registros.');
-                            return;
-                        }
-                        if (confirm('Tem certeza que deseja excluir este registro?')) {
-                            excluirContainerFirebase(id).then(success => {
-                                if (success) {
-                                    // Só remove do array local se realmente excluiu do Firebase
-                                    containers = containers.filter(c => String(c.id) !== String(id));
-                                    atualizarTabela();
-                                    atualizarDashboard();
-                                    atualizarPlanejador();
-                                    alert('✅ Registro excluído com sucesso!');
-                                } else {
-                                    alert('Erro ao excluir do servidor. Tente novamente.');
-                                }
-                            });
-                        }
-            
+            if (!usuarioLogado) {
+                alert('Faça login para editar registros.');
+                return;
+            }
+
+            const container = containers.find(c => String(c.id) === String(id));
+            if (!container) {
+                alert('Registro não encontrado para edição.');
+                return;
+            }
+
+            // manter o id atual em edição
+            editandoId = container.id;
+
+            // garantir listas carregadas sem limpar o form
+            carregarListaPOs();
+
+            // preencher campos do formulário com os dados existentes
             document.getElementById('refTbx').value = container.refTbx || '';
             document.getElementById('container').value = container.container || '';
             document.getElementById('vencimentoPorto').value = container.vencimentoPorto || '';
@@ -2716,7 +2757,8 @@
             document.getElementById('transportadora').value = container.transportadora || '';
             document.getElementById('frete').value = container.frete ? formatarMoeda(container.frete) : '';
 
-            abrirModalRegistro();
+            // abrir modal sem resetar o estado de edição
+            document.getElementById('modalRegistro').style.display = 'block';
         }
 
         // Parâmetros de peças por pallet
