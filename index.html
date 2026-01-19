@@ -2371,6 +2371,19 @@
             return dias;
         }
 
+        // Calcula o deslocamento de semanas a partir de hoje até uma data alvo
+        function calcularOffsetSemanaParaData(dataAlvo) {
+            const hoje = new Date();
+            const domingoHoje = new Date(hoje);
+            domingoHoje.setDate(hoje.getDate() - hoje.getDay());
+
+            const domingoAlvo = new Date(dataAlvo);
+            domingoAlvo.setDate(dataAlvo.getDate() - dataAlvo.getDay());
+
+            const diffDias = Math.round((domingoAlvo - domingoHoje) / (1000 * 60 * 60 * 24));
+            return diffDias / 7;
+        }
+
         // Formatar data para exibição
         function formatarDataExibicao(data) {
             const dia = String(data.getDate()).padStart(2, '0');
@@ -2393,7 +2406,21 @@
         // Atualizar planejador semanal
         function atualizarPlanejador() {
             const previsoesConsideradas = obterPrevisoesFiltradas();
-            const diasSemana = obterIntervaloSemana(semanaAtual);
+            const previsoesOrdenadasPorData = [...previsoesConsideradas].sort((a, b) => {
+                const da = a.dataEmbarque || '';
+                const db = b.dataEmbarque || '';
+                return da.localeCompare(db);
+            });
+
+            let diasSemana = obterIntervaloSemana(semanaAtual);
+            if (filtroLotePlanejador && previsoesOrdenadasPorData.length > 0) {
+                const alvoStr = previsoesOrdenadasPorData[0].dataEmbarque;
+                if (alvoStr) {
+                    const alvoData = new Date(alvoStr + 'T00:00:00');
+                    const offsetAlvo = calcularOffsetSemanaParaData(alvoData);
+                    diasSemana = obterIntervaloSemana(offsetAlvo);
+                }
+            }
             // Atualizar título
             const primeiraData = formatarDataExibicao(diasSemana[0]);
             const ultimaData = formatarDataExibicao(diasSemana[6]);
