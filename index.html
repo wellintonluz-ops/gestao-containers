@@ -868,6 +868,17 @@
                 <button class="btn btn-primary" onclick="navegarSemana(1)">Semana Seguinte ➡️</button>
             </div>
 
+            <!-- Filtro por Lote/PO -->
+            <div class="form-section" style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+                <div style="flex: 1; min-width: 260px;">
+                    <label for="filtroLoteInput" style="margin-bottom: 6px; display: block;">Filtrar por lote/PO</label>
+                    <input id="filtroLoteInput" type="text" class="search-box" placeholder="Ex: TBX-2025-001" oninput="filtrarPlanejadorPorLote(this.value)">
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn btn-primary" style="background: #3e3e42; color: #cccccc;" onclick="document.getElementById('filtroLoteInput').value=''; filtrarPlanejadorPorLote('');">Limpar filtro</button>
+                </div>
+            </div>
+
             <!-- Importar Base de Previsão (só para logado) -->
             <div class="form-section" id="importPrevisaoSection" style="margin-bottom: 20px; display: none;">
                 <h3 style="margin-bottom: 15px; color: #007acc;">📥 Importar Base de Previsão</h3>
@@ -1125,6 +1136,7 @@
         let unsubscribeContainers = null;
         let unsubscribeTransportadoras = null;
         let unsubscribePrevisoes = null;
+        let filtroLotePlanejador = '';
         
         // Paginação
         let paginaAtual = 1;
@@ -2160,6 +2172,16 @@
         let previsoes = []; // Array para armazenar previsões de chegada
         let semanaAtual = 0; // Offset da semana atual (0 = semana atual, 1 = próxima, -1 = anterior)
 
+        function filtrarPlanejadorPorLote(valor) {
+            filtroLotePlanejador = (valor || '').trim().toLowerCase();
+            atualizarPlanejador();
+        }
+
+        function obterPrevisoesFiltradas() {
+            if (!filtroLotePlanejador) return previsoes;
+            return previsoes.filter(p => (p.po || '').toLowerCase().includes(filtroLotePlanejador));
+        }
+
         // Carregar previsões do Firebase
         async function carregarPrevisoesFirebase() {
             try {
@@ -2370,6 +2392,7 @@
 
         // Atualizar planejador semanal
         function atualizarPlanejador() {
+            const previsoesConsideradas = obterPrevisoesFiltradas();
             const diasSemana = obterIntervaloSemana(semanaAtual);
             // Atualizar título
             const primeiraData = formatarDataExibicao(diasSemana[0]);
@@ -2389,7 +2412,7 @@
             // Função para criar card do dia
             function criarCardDia(dia) {
                 const diaStr = dia.toISOString().split('T')[0];
-                const previsoesNoDia = previsoes.filter(p => p.dataEmbarque === diaStr);
+                const previsoesNoDia = previsoesConsideradas.filter(p => p.dataEmbarque === diaStr);
                 const diaCard = document.createElement('div');
                 // Adicionar classes para sabado/domingo
                 const diaSemana = dia.getDay();
@@ -2431,6 +2454,13 @@
                     }
                 });
 
+                const previsoesOrdenadas = [...previsoesNoDia].sort((a, b) => {
+                    const loteA = (a.po || '').toString();
+                    const loteB = (b.po || '').toString();
+                    // Ordenação alfanumérica com números naturais
+                    return loteA.localeCompare(loteB, undefined, { numeric: true, sensitivity: 'base' });
+                });
+
                 diaCard.innerHTML = `
                     <div class="dia-card-header">
                         <h4>${obterNomeDia(dia)}</h4>
@@ -2441,9 +2471,9 @@
                         </div>
                     </div>
                     <div class="dia-card-body">
-                        ${previsoesNoDia.length === 0 
+                        ${previsoesOrdenadas.length === 0 
                             ? '<p style="text-align: center; color: #858585; padding: 20px;">Nenhum container previsto</p>'
-                            : previsoesNoDia.map(p => {
+                            : previsoesOrdenadas.map(p => {
                                 let itensHTML = '';
                                 if (p.itens && Array.isArray(p.itens) && p.itens.length > 0) {
                                     itensHTML = p.itens.map(item => {
@@ -2489,7 +2519,7 @@
             document.getElementById('totalUnidadesSemana').textContent = totalUnidades.toLocaleString('pt-BR');
 
             // Atualizar tabela de produtos
-            atualizarTabelaProdutos(diasSemana);
+            atualizarTabelaProdutos(diasSemana, previsoesConsideradas);
         }
         
         // Navegar entre semanas
@@ -2499,13 +2529,13 @@
         }
 
         // Atualizar tabela de produtos esperados
-        function atualizarTabelaProdutos(diasSemana) {
+        function atualizarTabelaProdutos(diasSemana, previsoesFonte = previsoes) {
             const tbody = document.getElementById('produtosSemanaBody');
             
             const inicio = diasSemana[0].toISOString().split('T')[0];
             const fim = diasSemana[6].toISOString().split('T')[0];
             
-            const previsoesSemana = previsoes.filter(p => p.dataEmbarque >= inicio && p.dataEmbarque <= fim);
+            const previsoesSemana = previsoesFonte.filter(p => p.dataEmbarque >= inicio && p.dataEmbarque <= fim);
             
             if (previsoesSemana.length === 0) {
                 tbody.innerHTML = `
