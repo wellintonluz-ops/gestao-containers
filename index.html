@@ -1257,6 +1257,7 @@
                         return { id: doc.id, ...data };
                     });
                     atualizarPlanejador();
+                    atualizarTabela();
                 });
             } catch (error) {
                 console.error('Erro ao iniciar listeners em tempo real:', error);
