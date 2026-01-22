@@ -343,6 +343,73 @@
             background: #2d2d30;
         }
 
+        .row-clickable {
+            cursor: pointer;
+        }
+
+        .row-clickable:hover {
+            background: #2f3745;
+        }
+
+        .day-separator {
+            background: #1b2735;
+            color: #80c7ff;
+            font-weight: 700;
+            text-align: left;
+            border-top: 2px solid #3e3e42;
+            border-bottom: 2px solid #3e3e42;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-card {
+            background: #252526;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #3e3e42;
+            max-width: 700px;
+            width: 100%;
+            color: #cccccc;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-card h3 {
+            margin-bottom: 10px;
+            color: #80c7ff;
+        }
+
+        .modal-card .subinfo {
+            color: #9aa0a6;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+
+        .modal-card .itens-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .modal-card .empty {
+            color: #858585;
+            text-align: center;
+            padding: 20px 0;
+        }
+
         .status-badge {
             padding: 4px 10px;
             border-radius: 12px;
@@ -1023,6 +1090,20 @@
                 </form>
             </div>
         </div>
+
+        <!-- Modal de Itens do Container -->
+        <div id="modalItensContainer" class="modal-overlay" onclick="if(event.target.id==='modalItensContainer') fecharItensContainerModal();">
+            <div class="modal-card">
+                <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:10px;">
+                    <div>
+                        <h3 id="modalItensTitulo">Itens do Container</h3>
+                        <div id="modalItensSubinfo" class="subinfo"></div>
+                    </div>
+                    <button class="btn btn-delete" onclick="fecharItensContainerModal(); event.stopPropagation();">✖ Fechar</button>
+                </div>
+                <div id="modalItensBody" class="itens-grid"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1449,22 +1530,22 @@
             const fim = inicio + itensPorPagina;
             const containersPagina = containersOrdenados.slice(inicio, fim);
 
-            tbody.innerHTML = containersPagina.map(c => {
+            const montarLinhaContainer = (c) => {
                 const isEntregue = c.statusEntrega === 'entregue';
                 let acoes = '';
                 if (usuarioLogado) {
                     acoes = `
-                        <button class="btn btn-edit" onclick="editarContainer('${c.id}')">✏️ Editar</button>
-                        <button class="btn btn-delete" onclick="excluirRegistro('${c.id}')">🗑️ Excluir</button>
+                        <button class="btn btn-edit" onclick="event.stopPropagation(); editarContainer('${c.id}')">✏️ Editar</button>
+                        <button class="btn btn-delete" onclick="event.stopPropagation(); excluirRegistro('${c.id}')">🗑️ Excluir</button>
                     `;
                 }
                 return `
-                <tr>
+                <tr class="row-clickable" onclick="abrirItensContainerModal('${c.container}','${c.refTbx}')">
                     <td>
-                        ${isEntregue 
-                            ? '<button class="btn btn-status entregue" disabled>✅ Entregue</button>' 
-                            : (usuarioLogado 
-                                ? `<button class="btn btn-status" onclick="marcarComoEntregue('${c.id}')">Marcar Entregue</button>` 
+                        ${isEntregue
+                            ? '<button class="btn btn-status entregue" disabled>✅ Entregue</button>'
+                            : (usuarioLogado
+                                ? `<button class="btn btn-status" onclick="event.stopPropagation(); marcarComoEntregue('${c.id}')">Marcar Entregue</button>`
                                 : '<span class="status-badge status-pendente">⏳ Pendente</span>')
                         }
                     </td>
@@ -1480,7 +1561,30 @@
                     <td>${formatarMoeda(c.frete)}</td>
                     <td>${acoes}</td>
                 </tr>
-            `}).join('');
+            `;
+            };
+
+            let ultimoDiaAgrupado = null;
+            const linhas = [];
+
+            containersPagina.forEach(c => {
+                if (filtroStatusAtual === 'pendente') {
+                    const dataFormatada = formatarData(c.entregaTbx);
+                    const rotuloDia = dataFormatada !== '-' ? `Agenda ${dataFormatada}` : 'Agenda sem data de entrega';
+                    if (rotuloDia !== ultimoDiaAgrupado) {
+                        linhas.push(`
+                <tr class="day-separator">
+                    <td colspan="12">${rotuloDia}</td>
+                </tr>
+            `);
+                        ultimoDiaAgrupado = rotuloDia;
+                    }
+                }
+
+                linhas.push(montarLinhaContainer(c));
+            });
+
+            tbody.innerHTML = linhas.join('');
             
             // Atualizar paginação
             atualizarPaginacao(totalPaginas, containersFiltrados.length);
@@ -1543,6 +1647,38 @@
                 const text = row.textContent.toLowerCase();
                 row.style.display = text.includes(input) ? '' : 'none';
             }
+        }
+
+        function abrirItensContainerModal(containerNumero, refTbx) {
+            const modal = document.getElementById('modalItensContainer');
+            const titulo = document.getElementById('modalItensTitulo');
+            const subinfo = document.getElementById('modalItensSubinfo');
+            const body = document.getElementById('modalItensBody');
+
+            const containerNormalizado = normalizarNumeroContainer(containerNumero);
+            const previsao = previsoes.find(p => normalizarNumeroContainer(p.container) === containerNormalizado);
+
+            titulo.textContent = `Container ${containerNumero || '-'}`;
+            subinfo.textContent = `Ref. TBX: ${refTbx || '-'}${previsao?.po ? ` • Lote ${previsao.po}` : ''}`;
+
+            if (!previsao || !previsao.itens || previsao.itens.length === 0) {
+                body.innerHTML = `<div class="empty">Nenhum item vinculado a este container.</div>`;
+            } else {
+                body.innerHTML = previsao.itens.map(item => `
+                    <div class="container-item">
+                        <strong>${item.item || 'Item sem nome'}</strong>
+                        <div class="produto">Tipo: ${item.tipo || '-'}</div>
+                        <div class="quantidade">Quantidade: ${item.quantidade || 0}${(calcularPalletsItem(item.item, item.quantidade) !== null) ? ` • ${calcularPalletsItem(item.item, item.quantidade)} pallet(s)` : ''}</div>
+                    </div>
+                `).join('');
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function fecharItensContainerModal() {
+            const modal = document.getElementById('modalItensContainer');
+            modal.style.display = 'none';
         }
 
         // Data de referência única para filtros/agrupamentos (prioriza entrega real)
@@ -1980,6 +2116,24 @@
         function formatarMoeda(valor) {
             if (!valor) return 'R$ 0,00';
             return 'R$ ' + parseFloat(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function normalizarNumeroContainer(valor) {
+            if (!valor) return '';
+            let limpo = String(valor).toUpperCase().trim();
+            limpo = limpo.split('/')[0];
+            limpo = limpo.replace(/\s+/g, '');
+            return limpo.substring(0, 11);
+        }
+
+        function calcularPalletsItem(codigo, quantidade) {
+            if (!codigo || !Array.isArray(parametrosPallet)) return null;
+            const codigoNorm = String(codigo).toUpperCase();
+            const param = parametrosPallet.find(p => String(p.codigo).toUpperCase() === codigoNorm);
+            if (param && Number(param.quantidade) > 0) {
+                return Math.ceil((Number(quantidade) || 0) / Number(param.quantidade));
+            }
+            return null;
         }
 
         // Formatar campo de moeda enquanto digita
