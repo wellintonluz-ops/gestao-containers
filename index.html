@@ -1217,6 +1217,7 @@
         let unsubscribeContainers = null;
         let unsubscribeTransportadoras = null;
         let unsubscribePrevisoes = null;
+        let unsubscribeParametrosPallet = null;
         let filtroLotePlanejador = '';
         
         // Paginação
@@ -1258,6 +1259,19 @@
                     });
                     atualizarPlanejador();
                     atualizarTabela();
+                });
+
+                // Parâmetros de pallets
+                if (unsubscribeParametrosPallet) unsubscribeParametrosPallet();
+                unsubscribeParametrosPallet = db.collection('parametrosPallet').onSnapshot(snapshot => {
+                    parametrosPallet = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return { codigo: doc.id, quantidade: data.quantidade };
+                    });
+                    localStorage.setItem('parametrosPallet', JSON.stringify(parametrosPallet));
+                    atualizarTabelaParametrosPallet();
+                    atualizarTabela();
+                    atualizarPlanejador();
                 });
             } catch (error) {
                 console.error('Erro ao iniciar listeners em tempo real:', error);
@@ -1312,6 +1326,29 @@
             } catch (error) {
                 console.error('Erro ao excluir transportadora:', error);
                 alert('⚠️ Erro ao excluir transportadora.');
+                return false;
+            }
+        }
+
+        // Parâmetros de pallets - Firestore
+        async function salvarParametroPalletFirebase(param) {
+            try {
+                await db.collection('parametrosPallet').doc(String(param.codigo)).set({ quantidade: Number(param.quantidade) || 0 });
+                return true;
+            } catch (error) {
+                console.error('Erro ao salvar parâmetro de pallet:', error);
+                alert('⚠️ Erro ao salvar parâmetro de pallet.');
+                return false;
+            }
+        }
+
+        async function excluirParametroPalletFirebase(codigo) {
+            try {
+                await db.collection('parametrosPallet').doc(String(codigo)).delete();
+                return true;
+            } catch (error) {
+                console.error('Erro ao excluir parâmetro de pallet:', error);
+                alert('⚠️ Erro ao excluir parâmetro de pallet.');
                 return false;
             }
         }
@@ -3024,21 +3061,20 @@
                 tbody.innerHTML = `<tr><td colspan="4" class="empty-state"><div><div style="font-size: 3em;">📦</div><p>Nenhum parâmetro cadastrado. Adicione um novo acima.</p></div></td></tr>`;
                 return;
             }
-            tbody.innerHTML = parametrosPallet.map((p, i) => `
+            tbody.innerHTML = parametrosPallet.map(p => `
                 <tr>
                     <td><strong>${p.codigo}</strong></td>
                     <td>${p.quantidade}</td>
                     <td>VOL</td>
-                    <td><button class="btn btn-delete" onclick="excluirParametroPallet(${i})">🗑️ Excluir</button></td>
+                    <td><button class="btn btn-delete" onclick="excluirParametroPallet('${p.codigo.replace(/'/g, "\\'")}')">🗑️ Excluir</button></td>
                 </tr>
             `).join('');
         }
 
-        function excluirParametroPallet(idx) {
+        function excluirParametroPallet(codigo) {
+            if (!codigo) return;
             if (confirm('Deseja excluir este parâmetro?')) {
-                parametrosPallet.splice(idx, 1);
-                localStorage.setItem('parametrosPallet', JSON.stringify(parametrosPallet));
-                atualizarTabelaParametrosPallet();
+                excluirParametroPalletFirebase(codigo);
             }
         }
 
@@ -3054,10 +3090,11 @@
                 alert('Este código já está cadastrado!');
                 return;
             }
-            parametrosPallet.push({ codigo, quantidade });
-            localStorage.setItem('parametrosPallet', JSON.stringify(parametrosPallet));
-            atualizarTabelaParametrosPallet();
-            e.target.reset();
+            salvarParametroPalletFirebase({ codigo, quantidade }).then(sucesso => {
+                if (sucesso) {
+                    e.target.reset();
+                }
+            });
         });
 
         // Importação de parâmetros por arquivo
@@ -3078,18 +3115,18 @@
                         rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
                     }
                     let count = 0;
+                    const novos = [];
                     rows.forEach(row => {
                         const codigo = String(row[0] || '').toUpperCase().trim();
                         const quantidade = parseInt(row[1], 10);
                         if (codigo && quantidade && !parametrosPallet.some(p => p.codigo === codigo)) {
-                            parametrosPallet.push({ codigo, quantidade });
-                            count++;
+                            novos.push({ codigo, quantidade });
                         }
                     });
-                    localStorage.setItem('parametrosPallet', JSON.stringify(parametrosPallet));
-                    atualizarTabelaParametrosPallet();
-                    alert(`✅ ${count} parâmetro(s) importado(s)!`);
-                    e.target.value = '';
+                    Promise.all(novos.map(p => salvarParametroPalletFirebase(p))).then(() => {
+                        alert(`✅ ${novos.length} parâmetro(s) importado(s)!`);
+                        e.target.value = '';
+                    });
                 };
                 if (file.name.endsWith('.csv')) {
                     reader.readAsText(file);
