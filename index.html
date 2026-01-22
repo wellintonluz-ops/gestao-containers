@@ -1530,6 +1530,20 @@
             const fim = inicio + itensPorPagina;
             const containersPagina = containersOrdenados.slice(inicio, fim);
 
+            // Somatório de pallets por dia de entrega (para cabeçalho de grupo)
+            let palletsPorDia = new Map();
+            if (filtroStatusAtual === 'pendente') {
+                palletsPorDia = containersOrdenados.reduce((mapa, c) => {
+                    if (c.entregaTbx) {
+                        const pallets = calcularPalletsContainer(c.container);
+                        if (pallets !== null) {
+                            mapa.set(c.entregaTbx, (mapa.get(c.entregaTbx) || 0) + pallets);
+                        }
+                    }
+                    return mapa;
+                }, new Map());
+            }
+
             const montarLinhaContainer = (c) => {
                 const isEntregue = c.statusEntrega === 'entregue';
                 let acoes = '';
@@ -1571,10 +1585,12 @@
                 if (filtroStatusAtual === 'pendente') {
                     const dataFormatada = formatarData(c.entregaTbx);
                     const rotuloDia = dataFormatada !== '-' ? `Agenda ${dataFormatada}` : 'Agenda sem data de entrega';
+                    const palletsDia = (c.entregaTbx && palletsPorDia.has(c.entregaTbx)) ? palletsPorDia.get(c.entregaTbx) : null;
+                    const textoPallets = palletsDia ? ` • ${palletsDia} pallet(s)` : '';
                     if (rotuloDia !== ultimoDiaAgrupado) {
                         linhas.push(`
                 <tr class="day-separator">
-                    <td colspan="12">${rotuloDia}</td>
+                    <td colspan="12">${rotuloDia}${textoPallets}</td>
                 </tr>
             `);
                         ultimoDiaAgrupado = rotuloDia;
@@ -1658,7 +1674,12 @@
             const containerNormalizado = normalizarNumeroContainer(containerNumero);
             const previsao = previsoes.find(p => normalizarNumeroContainer(p.container) === containerNormalizado);
 
-            titulo.textContent = `Container ${containerNumero || '-'}`;
+            const totalPallets = (previsao?.itens || []).reduce((acc, item) => {
+                const pallets = calcularPalletsItem(item.item, item.quantidade);
+                return pallets !== null ? acc + pallets : acc;
+            }, 0);
+
+            titulo.textContent = `Container ${containerNumero || '-'}${totalPallets > 0 ? ` • ${totalPallets} pallet(s)` : ''}`;
             subinfo.textContent = `Ref. TBX: ${refTbx || '-'}${previsao?.po ? ` • Lote ${previsao.po}` : ''}`;
 
             if (!previsao || !previsao.itens || previsao.itens.length === 0) {
@@ -2134,6 +2155,17 @@
                 return Math.ceil((Number(quantidade) || 0) / Number(param.quantidade));
             }
             return null;
+        }
+
+        function calcularPalletsContainer(containerNumero) {
+            const containerNormalizado = normalizarNumeroContainer(containerNumero);
+            const previsao = previsoes.find(p => normalizarNumeroContainer(p.container) === containerNormalizado);
+            if (!previsao || !previsao.itens || previsao.itens.length === 0) return null;
+            const total = previsao.itens.reduce((acc, item) => {
+                const pallets = calcularPalletsItem(item.item, item.quantidade);
+                return pallets !== null ? acc + pallets : acc;
+            }, 0);
+            return total > 0 ? total : null;
         }
 
         // Formatar campo de moeda enquanto digita
