@@ -323,12 +323,17 @@
         }
 
         th {
-                height: 48px;
-                text-align: center;
-                vertical-align: middle;
-                font-weight: 700;
-                font-size: 17px;
-                white-space: nowrap;
+            height: 48px;
+            padding: 12px 10px;
+            text-align: center;
+            vertical-align: middle;
+            font-weight: 700;
+            font-size: 17px;
+            white-space: nowrap;
+        }
+
+        th:not(:last-child) {
+            border-right: 1px solid #3e3e42;
         }
 
         td {
@@ -732,18 +737,25 @@
                             <th>Status</th>
                             <th>Ref. TBX</th>
                             <th>N° Container</th>
-                            <th>Venc. Porto</th>
-                            <th>Data Liberação</th>
-                            <th>Data Carregamento</th>
-                            <th>Venc. Demurrage</th>
+                            <th class="col-private">Chegada Navio</th>
+                            <th class="col-private">Liberação Canal</th>
+                            <th class="col-private">Data Liberação</th>
+                            <th class="col-private">Data Carregamento</th>
+                            <th class="col-private">Venc. Porto</th>
+                            <th class="col-private">Venc. Demurrage</th>
                             <th>Entrega TBX</th>
+                            <th class="col-private">Registro DI</th>
                             <th>Previsão Descarga</th>
                             <th>Transportadora</th>
-                            <th>Frete (R$)</th>
+                            <th class="col-private">Canal</th>
+                            <th class="col-private">Frete (R$)</th>
+                            <th class="col-private">Valor 2° período</th>
+                            <th class="col-private">Valor Armazenagem Pátio</th>
+                            <th class="col-private">Valor Janela Especial</th>
                     </thead>
                     <tbody id="tableBody">
                         <tr>
-                            <td colspan="12" class="empty-state">
+                            <td colspan="18" class="empty-state" id="consultaEmptyStateCell">
                                 <div>
                                     <div style="font-size: 3em;">📦</div>
                                     <p>Nenhum registro encontrado. Adicione um novo registro na aba "Registro".</p>
@@ -1038,9 +1050,29 @@
                             <label for="container">N° Container *</label>
                             <input type="text" id="container" required placeholder="Ex: ABCD1234567">
                         </div>
+                    </div>
+
+                    <div class="form-row">
                         <div class="form-group">
-                            <label for="vencimentoPorto">Vencimento Armazenagem PORTO *</label>
-                            <input type="date" id="vencimentoPorto" required>
+                            <label for="chegadaNavio">Chegada do Navio</label>
+                            <input type="date" id="chegadaNavio">
+                        </div>
+                        <div class="form-group">
+                            <label for="registroDi">Data de Registro DI</label>
+                            <input type="date" id="registroDi">
+                        </div>
+                        <div class="form-group">
+                            <label for="liberacaoCanal">Data de Liberação no Canal</label>
+                            <input type="date" id="liberacaoCanal">
+                        </div>
+                        <div class="form-group">
+                            <label for="canal">Canal</label>
+                            <select id="canal">
+                                <option value="">Selecione o canal</option>
+                                <option value="Vermelho">Vermelho</option>
+                                <option value="Amarelo">Amarelo</option>
+                                <option value="Verde">Verde</option>
+                            </select>
                         </div>
                     </div>
 
@@ -1054,12 +1086,16 @@
                             <input type="date" id="dataCarregamento">
                         </div>
                         <div class="form-group">
-                            <label for="vencimentoDemurrage">Vencimento Demurrage *</label>
-                            <input type="date" id="vencimentoDemurrage" required>
+                            <label for="vencimentoPorto">Vencimento Armazenagem PORTO *</label>
+                            <input type="date" id="vencimentoPorto" required>
                         </div>
                     </div>
 
                     <div class="form-row">
+                        <div class="form-group">
+                            <label for="vencimentoDemurrage">Vencimento Demurrage *</label>
+                            <input type="date" id="vencimentoDemurrage" required>
+                        </div>
                         <div class="form-group">
                             <label for="entregaTbx">Entrega TBX (Data)</label>
                             <input type="date" id="entregaTbx">
@@ -1068,6 +1104,9 @@
                             <label for="previsaoDescarregamento">Previsão de Início de Descarregamento (Hora)</label>
                             <input type="time" id="previsaoDescarregamento">
                         </div>
+                    </div>
+
+                    <div class="form-row">
                         <div class="form-group">
                             <label for="transportadora">Transportadora</label>
                             <select id="transportadora">
@@ -1080,6 +1119,18 @@
                         <div class="form-group">
                             <label for="frete">Frete (Porto x TBX)</label>
                             <input type="text" id="frete" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
+                        </div>
+                        <div class="form-group">
+                            <label for="valorPeriodo2">Valor 2° período</label>
+                            <input type="text" id="valorPeriodo2" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
+                        </div>
+                        <div class="form-group">
+                            <label for="valorPatio">Valor de armazenagem em pátio</label>
+                            <input type="text" id="valorPatio" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
+                        </div>
+                        <div class="form-group">
+                            <label for="valorJanela">Valor de janela especial</label>
+                            <input type="text" id="valorJanela" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
                         </div>
                     </div>
 
@@ -1182,6 +1233,18 @@
                             el.disabled = !usuarioLogado;
                         });
                     });
+
+                    // Colunas privadas na consulta
+                    const privateCols = document.querySelectorAll('.col-private');
+                    privateCols.forEach(col => {
+                        col.style.display = usuarioLogado ? '' : 'none';
+                    });
+
+                    // Ajustar colspan do estado vazio conforme visibilidade
+                    const emptyCell = document.getElementById('consultaEmptyStateCell');
+                    if (emptyCell) {
+                        emptyCell.colSpan = usuarioLogado ? 18 : 6;
+                    }
                 }
                 // Fechar modal login ao clicar fora
                 document.getElementById('modalLogin').addEventListener('click', function(e) {
@@ -1480,11 +1543,18 @@
                 vencimentoPorto: document.getElementById('vencimentoPorto').value,
                 dataLiberacao: document.getElementById('dataLiberacao').value,
                 dataCarregamento: document.getElementById('dataCarregamento').value,
+                chegadaNavio: document.getElementById('chegadaNavio').value,
+                registroDi: document.getElementById('registroDi').value,
+                liberacaoCanal: document.getElementById('liberacaoCanal').value,
+                canal: document.getElementById('canal').value,
                 vencimentoDemurrage: document.getElementById('vencimentoDemurrage').value,
                 entregaTbx: document.getElementById('entregaTbx').value,
                 previsaoDescarregamento: document.getElementById('previsaoDescarregamento').value,
                 transportadora: document.getElementById('transportadora').value,
                 frete: converterMoedaParaNumero(document.getElementById('frete').value),
+                valorPeriodo2: converterMoedaParaNumero(document.getElementById('valorPeriodo2').value),
+                valorPatio: converterMoedaParaNumero(document.getElementById('valorPatio').value),
+                valorJanela: converterMoedaParaNumero(document.getElementById('valorJanela').value),
                 statusEntrega: editandoId ? containers.find(c => c.id === editandoId)?.statusEntrega || 'pendente' : 'pendente'
             };
 
@@ -1550,7 +1620,7 @@
             if (containersFiltrados.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="12" class="empty-state">
+                        <td colspan="18" class="empty-state">
                             <div>
                                 <div style="font-size: 3em;">📦</div>
                                 <p>Nenhum registro encontrado nesta categoria.</p>
@@ -1603,14 +1673,21 @@
                     </td>
                     <td><strong>${c.refTbx}</strong></td>
                     <td>${c.container}</td>
-                    <td>${formatarData(c.vencimentoPorto)}</td>
-                    <td>${formatarData(c.dataLiberacao)}</td>
-                    <td>${formatarData(c.dataCarregamento)}</td>
-                    <td>${formatarData(c.vencimentoDemurrage)}</td>
+                    <td class="col-private">${formatarData(c.chegadaNavio)}</td>
+                    <td class="col-private">${formatarData(c.liberacaoCanal)}</td>
+                    <td class="col-private">${formatarData(c.dataLiberacao)}</td>
+                    <td class="col-private">${formatarData(c.dataCarregamento)}</td>
+                    <td class="col-private">${formatarData(c.vencimentoPorto)}</td>
+                    <td class="col-private">${formatarData(c.vencimentoDemurrage)}</td>
                     <td>${formatarData(c.entregaTbx)}</td>
+                    <td class="col-private">${formatarData(c.registroDi)}</td>
                     <td>${c.previsaoDescarregamento || '-'}</td>
                     <td>${c.transportadora || '-'}</td>
-                    <td>${formatarMoeda(c.frete)}</td>
+                    <td class="col-private">${c.canal || '-'}</td>
+                    <td class="col-private">${formatarMoeda(c.frete)}</td>
+                    <td class="col-private">${formatarMoeda(c.valorPeriodo2)}</td>
+                    <td class="col-private">${formatarMoeda(c.valorPatio)}</td>
+                    <td class="col-private">${formatarMoeda(c.valorJanela)}</td>
                     <td>${acoes}</td>
                 </tr>
             `;
@@ -1628,7 +1705,7 @@
                     if (rotuloDia !== ultimoDiaAgrupado) {
                         linhas.push(`
                 <tr class="day-separator">
-                    <td colspan="12">${rotuloDia}${textoPallets}</td>
+                    <td colspan="18">${rotuloDia}${textoPallets}</td>
                 </tr>
             `);
                         ultimoDiaAgrupado = rotuloDia;
@@ -2248,14 +2325,21 @@
                             id: Date.now() + Math.random(),
                             refTbx: row[0] || '',
                             container: row[1] || '',
-                            vencimentoPorto: converterDataExcel(row[2]),
-                            vencimentoDemurrage: converterDataExcel(row[3]),
-                            dataLiberacao: converterDataExcel(row[4]),
-                            dataCarregamento: converterDataExcel(row[5]),
-                            entregaTbx: converterDataExcel(row[8]),
-                            previsaoDescarregamento: extrairHora(row[9]), // Coluna J (Status com texto e hora) - índice 9
-                            transportadora: row[10] || '', // Coluna K (Transportadora) - índice 10
-                            frete: extrairValor(row[11]), // Coluna L (Frete) - índice 11
+                            chegadaNavio: converterDataExcel(row[2]),
+                            registroDi: converterDataExcel(row[3]),
+                            liberacaoCanal: converterDataExcel(row[4]),
+                            dataLiberacao: converterDataExcel(row[5]),
+                            dataCarregamento: converterDataExcel(row[6]),
+                            vencimentoPorto: converterDataExcel(row[7]),
+                            vencimentoDemurrage: converterDataExcel(row[8]),
+                            entregaTbx: converterDataExcel(row[9]),
+                            previsaoDescarregamento: extrairHora(row[10]),
+                            transportadora: row[11] || '',
+                            canal: row[12] || '',
+                            frete: extrairValor(row[13]),
+                            valorPeriodo2: extrairValor(row[14]),
+                            valorPatio: extrairValor(row[15]),
+                            valorJanela: extrairValor(row[16]),
                             statusEntrega: 'entregue' // Dados importados são marcados como entregues
                         };
 
@@ -2361,14 +2445,21 @@
             const dados = containers.map(c => ({
                 'Ref. TBX': c.refTbx,
                 'Containers': c.container,
-                'Vencimento armazenagem PORTO': formatarData(c.vencimentoPorto),
-                'Vencimento demurrage': formatarData(c.vencimentoDemurrage),
+                'Chegada do navio': formatarData(c.chegadaNavio),
+                'Registro DI': formatarData(c.registroDi),
+                'Liberação no canal': formatarData(c.liberacaoCanal),
                 'Data da liberação carregamento': formatarData(c.dataLiberacao),
                 'Data carregamento': formatarData(c.dataCarregamento),
+                'Vencimento armazenagem PORTO': formatarData(c.vencimentoPorto),
+                'Vencimento demurrage': formatarData(c.vencimentoDemurrage),
                 'Entrega TBX': formatarData(c.entregaTbx),
                 'Previsão início descarregamento': c.previsaoDescarregamento || '',
                 'Transportadora': c.transportadora || '',
-                'Frete (R$)': c.frete || ''
+                'Canal': c.canal || '',
+                'Frete (R$)': c.frete || '',
+                'Valor 2° período': c.valorPeriodo2 || '',
+                'Valor Armazenagem Pátio': c.valorPatio || '',
+                'Valor Janela Especial': c.valorJanela || ''
             }));
 
             const ws = XLSX.utils.json_to_sheet(dados);
@@ -3032,11 +3123,18 @@
             document.getElementById('vencimentoPorto').value = container.vencimentoPorto || '';
             document.getElementById('dataLiberacao').value = container.dataLiberacao || '';
             document.getElementById('dataCarregamento').value = container.dataCarregamento || '';
+            document.getElementById('chegadaNavio').value = container.chegadaNavio || '';
+            document.getElementById('registroDi').value = container.registroDi || '';
+            document.getElementById('liberacaoCanal').value = container.liberacaoCanal || '';
+            document.getElementById('canal').value = container.canal || '';
             document.getElementById('vencimentoDemurrage').value = container.vencimentoDemurrage || '';
             document.getElementById('entregaTbx').value = container.entregaTbx || '';
             document.getElementById('previsaoDescarregamento').value = container.previsaoDescarregamento || '';
             document.getElementById('transportadora').value = container.transportadora || '';
             document.getElementById('frete').value = container.frete ? formatarMoeda(container.frete) : '';
+            document.getElementById('valorPeriodo2').value = container.valorPeriodo2 ? formatarMoeda(container.valorPeriodo2) : '';
+            document.getElementById('valorPatio').value = container.valorPatio ? formatarMoeda(container.valorPatio) : '';
+            document.getElementById('valorJanela').value = container.valorJanela ? formatarMoeda(container.valorJanela) : '';
 
             // abrir modal sem resetar o estado de edição
             document.getElementById('modalRegistro').style.display = 'block';
