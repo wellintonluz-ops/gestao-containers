@@ -746,7 +746,7 @@
                             <th>Entrega TBX</th>
                             <th class="col-private">Registro DI</th>
                             <th>Previsão Descarga</th>
-                            <th>Transportadora</th>
+                            <th class="col-private">Transportadora</th>
                             <th class="col-private">Canal</th>
                             <th class="col-private">Frete (R$)</th>
                             <th class="col-private">Valor 2° período</th>
@@ -1161,29 +1161,6 @@
                 // --- LOGIN SIMPLES ---
                 let usuarioLogado = false;
                 let listenersAtivos = false;
-
-                function limparDadosAoDeslogar() {
-                    pararListenersTempoReal();
-                    containers = [];
-                    transportadoras = [];
-                    previsoes = [];
-                    parametrosPallet = [];
-                    paginaAtual = 1;
-                    if (graficoMensal) {
-                        graficoMensal.destroy();
-                        graficoMensal = null;
-                    }
-                    localStorage.removeItem('parametrosPallet');
-                    atualizarTabela();
-                    atualizarDashboard();
-                    atualizarPlanejador();
-                    atualizarTabelaTransportadoras();
-                    atualizarTabelaParametrosPallet();
-                    const paginacaoDiv = document.getElementById('paginacao');
-                    if (paginacaoDiv) {
-                        paginacaoDiv.innerHTML = '';
-                    }
-                }
                 function abrirModalLogin() {
                     document.getElementById('modalLogin').style.display = 'flex';
                     document.getElementById('loginUsuario').focus();
@@ -1210,11 +1187,17 @@
                 function logout() {
                     usuarioLogado = false;
                     localStorage.removeItem('usuarioLogado');
-                    limparDadosAoDeslogar();
                     atualizarPermissoes();
                     // Voltar para a aba planejador ao sair
                     openTab('planejador');
                 }
+                function aplicarVisibilidadeColunasPrivadas() {
+                    const privateCols = document.querySelectorAll('.col-private');
+                    privateCols.forEach(col => {
+                        col.style.display = usuarioLogado ? '' : 'none';
+                    });
+                }
+
                 function atualizarPermissoes() {
                                 // Exibir/ocultar importação de previsão no planejador semanal
                                 var importPrevisaoSection = document.getElementById('importPrevisaoSection');
@@ -1261,10 +1244,7 @@
                     });
 
                     // Colunas privadas na consulta
-                    const privateCols = document.querySelectorAll('.col-private');
-                    privateCols.forEach(col => {
-                        col.style.display = usuarioLogado ? '' : 'none';
-                    });
+                    aplicarVisibilidadeColunasPrivadas();
 
                     // Ajustar colspan do estado vazio conforme visibilidade
                     const emptyCell = document.getElementById('consultaEmptyStateCell');
@@ -1280,11 +1260,7 @@
                 window.addEventListener('DOMContentLoaded', function() {
                     usuarioLogado = localStorage.getItem('usuarioLogado') === '1';
                     atualizarPermissoes();
-                    if (usuarioLogado) {
-                        iniciarListenersTempoReal();
-                    } else {
-                        limparDadosAoDeslogar();
-                    }
+                    iniciarListenersTempoReal();
                 });
         // Configuração do Firebase
         const firebaseConfig = {
@@ -1320,14 +1296,12 @@
 
         // Carregar dados ao iniciar com atualização em tempo real
         window.onload = function() {
-            if (usuarioLogado) {
-                iniciarListenersTempoReal();
-            }
+            iniciarListenersTempoReal();
         };
 
         // Configurar listeners em tempo real
         function iniciarListenersTempoReal() {
-            if (!usuarioLogado || listenersAtivos) return;
+            if (listenersAtivos) return;
             try {
                 listenersAtivos = true;
                 // Containers
@@ -1738,7 +1712,7 @@
                     <td>${formatarData(c.entregaTbx)}</td>
                     <td class="col-private">${formatarData(c.registroDi)}</td>
                     <td>${c.previsaoDescarregamento || '-'}</td>
-                    <td>${c.transportadora || '-'}</td>
+                    <td class="col-private">${c.transportadora || '-'}</td>
                     <td class="col-private">${c.canal || '-'}</td>
                     <td class="col-private">${formatarMoeda(c.frete)}</td>
                     <td class="col-private">${formatarMoeda(c.valorPeriodo2)}</td>
@@ -1772,6 +1746,7 @@
             });
 
             tbody.innerHTML = linhas.join('');
+            aplicarVisibilidadeColunasPrivadas();
             
             // Atualizar paginação
             atualizarPaginacao(totalPaginas, containersFiltrados.length);
