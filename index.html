@@ -1160,6 +1160,30 @@
     <script>
                 // --- LOGIN SIMPLES ---
                 let usuarioLogado = false;
+                let listenersAtivos = false;
+
+                function limparDadosAoDeslogar() {
+                    pararListenersTempoReal();
+                    containers = [];
+                    transportadoras = [];
+                    previsoes = [];
+                    parametrosPallet = [];
+                    paginaAtual = 1;
+                    if (graficoMensal) {
+                        graficoMensal.destroy();
+                        graficoMensal = null;
+                    }
+                    localStorage.removeItem('parametrosPallet');
+                    atualizarTabela();
+                    atualizarDashboard();
+                    atualizarPlanejador();
+                    atualizarTabelaTransportadoras();
+                    atualizarTabelaParametrosPallet();
+                    const paginacaoDiv = document.getElementById('paginacao');
+                    if (paginacaoDiv) {
+                        paginacaoDiv.innerHTML = '';
+                    }
+                }
                 function abrirModalLogin() {
                     document.getElementById('modalLogin').style.display = 'flex';
                     document.getElementById('loginUsuario').focus();
@@ -1178,6 +1202,7 @@
                         localStorage.setItem('usuarioLogado', '1');
                         fecharModalLogin();
                         atualizarPermissoes();
+                        iniciarListenersTempoReal();
                     } else {
                         document.getElementById('loginErro').style.display = 'block';
                     }
@@ -1185,6 +1210,7 @@
                 function logout() {
                     usuarioLogado = false;
                     localStorage.removeItem('usuarioLogado');
+                    limparDadosAoDeslogar();
                     atualizarPermissoes();
                     // Voltar para a aba planejador ao sair
                     openTab('planejador');
@@ -1254,6 +1280,11 @@
                 window.addEventListener('DOMContentLoaded', function() {
                     usuarioLogado = localStorage.getItem('usuarioLogado') === '1';
                     atualizarPermissoes();
+                    if (usuarioLogado) {
+                        iniciarListenersTempoReal();
+                    } else {
+                        limparDadosAoDeslogar();
+                    }
                 });
         // Configuração do Firebase
         const firebaseConfig = {
@@ -1289,12 +1320,16 @@
 
         // Carregar dados ao iniciar com atualização em tempo real
         window.onload = function() {
-            iniciarListenersTempoReal();
+            if (usuarioLogado) {
+                iniciarListenersTempoReal();
+            }
         };
 
         // Configurar listeners em tempo real
         function iniciarListenersTempoReal() {
+            if (!usuarioLogado || listenersAtivos) return;
             try {
+                listenersAtivos = true;
                 // Containers
                 if (unsubscribeContainers) unsubscribeContainers();
                 unsubscribeContainers = db.collection('containers').onSnapshot(snapshot => {
@@ -1337,9 +1372,30 @@
                     atualizarPlanejador();
                 });
             } catch (error) {
+                listenersAtivos = false;
                 console.error('Erro ao iniciar listeners em tempo real:', error);
                 alert('⚠️ Erro ao conectar em tempo real com o servidor.');
             }
+        }
+
+        function pararListenersTempoReal() {
+            if (unsubscribeContainers) {
+                unsubscribeContainers();
+                unsubscribeContainers = null;
+            }
+            if (unsubscribeTransportadoras) {
+                unsubscribeTransportadoras();
+                unsubscribeTransportadoras = null;
+            }
+            if (unsubscribePrevisoes) {
+                unsubscribePrevisoes();
+                unsubscribePrevisoes = null;
+            }
+            if (unsubscribeParametrosPallet) {
+                unsubscribeParametrosPallet();
+                unsubscribeParametrosPallet = null;
+            }
+            listenersAtivos = false;
         }
 
         // Salvar container no Firebase
