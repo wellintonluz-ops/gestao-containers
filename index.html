@@ -1620,6 +1620,7 @@
         // Atualizar tabela de consulta
         function atualizarTabela() {
             const tbody = document.getElementById('tableBody');
+            const termoBusca = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
             
             // Filtrar containers baseado no status atual
             let containersFiltrados = containers;
@@ -1627,6 +1628,24 @@
                 containersFiltrados = containers.filter(c => c.statusEntrega !== 'entregue');
             } else if (filtroStatusAtual === 'entregue') {
                 containersFiltrados = containers.filter(c => c.statusEntrega === 'entregue');
+            }
+
+            // Aplicar filtro de texto (Ref., container, transportadora, canal, datas, previsão)
+            if (termoBusca) {
+                containersFiltrados = containersFiltrados.filter(c => {
+                    const campos = [
+                        c.refTbx,
+                        c.container,
+                        c.transportadora,
+                        c.canal,
+                        c.previsaoDescarregamento,
+                        c.entregaTbx,
+                        c.registroDi,
+                        c.vencimentoPorto,
+                        c.vencimentoDemurrage
+                    ];
+                    return campos.some(valor => (valor || '').toString().toLowerCase().includes(termoBusca));
+                });
             }
 
             // Ordenação por data de entrega + previsão descarga
@@ -1664,6 +1683,9 @@
 
             // Calcular paginação
             const totalPaginas = Math.ceil(containersOrdenados.length / itensPorPagina);
+            if (paginaAtual > totalPaginas) {
+                paginaAtual = totalPaginas; // Garante página válida após filtros
+            }
             const inicio = (paginaAtual - 1) * itensPorPagina;
             const fim = inicio + itensPorPagina;
             const containersPagina = containersOrdenados.slice(inicio, fim);
@@ -1801,14 +1823,8 @@
 
         // Filtrar tabela
         function filtrarTabela() {
-            const input = document.getElementById('searchInput').value.toLowerCase();
-            const tbody = document.getElementById('tableBody');
-            const rows = tbody.getElementsByTagName('tr');
-
-            for (let row of rows) {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(input) ? '' : 'none';
-            }
+            paginaAtual = 1; // Recomeça na primeira página ao aplicar filtro de texto
+            atualizarTabela();
         }
 
         function abrirItensContainerModal(containerNumero, refTbx) {
