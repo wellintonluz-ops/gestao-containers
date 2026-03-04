@@ -880,6 +880,16 @@
                     <h3 id="totalFrete">R$ 0,00</h3>
                     <p>Total em Frete</p>
                 </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <h3 id="totalPeriodo2">R$ 0,00</h3>
+                    <p style="margin-bottom: 4px;">Valor 2º Período</p>
+                    <small id="totalPeriodo2Qtd" style="color: #fbe9ff; font-weight: 600;">0 container(s)</small>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #7F7FD5 0%, #86A8E7 50%, #91EAE4 100%);">
+                    <h3 id="totalJanela">R$ 0,00</h3>
+                    <p style="margin-bottom: 4px;">Janela Especial</p>
+                    <small id="totalJanelaQtd" style="color: #e8f5ff; font-weight: 600;">0 container(s)</small>
+                </div>
             </div>
 
             <div class="table-container">
@@ -1995,6 +2005,16 @@
             // Calcular total de frete - do ano selecionado
             const totalFrete = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.frete) || 0), 0);
             document.getElementById('totalFrete').textContent = formatarMoeda(totalFrete);
+
+            // Calcular total de valor do 2º período e janela especial
+            const totalPeriodo2 = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.valorPeriodo2) || 0), 0);
+            const totalJanela = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.valorJanela) || 0), 0);
+            const qtdPeriodo2 = containersFiltradosPorAno.filter(c => (parseFloat(c.valorPeriodo2) || 0) > 0).length;
+            const qtdJanela = containersFiltradosPorAno.filter(c => (parseFloat(c.valorJanela) || 0) > 0).length;
+            document.getElementById('totalPeriodo2').textContent = formatarMoeda(totalPeriodo2);
+            document.getElementById('totalJanela').textContent = formatarMoeda(totalJanela);
+            document.getElementById('totalPeriodo2Qtd').textContent = `${qtdPeriodo2} container(s)`;
+            document.getElementById('totalJanelaQtd').textContent = `${qtdJanela} container(s)`;
 
             // Atualizar tabela de frete por transportadora - com filtro de ano
             atualizarFreteTransportadora(containersFiltradosPorAno);
