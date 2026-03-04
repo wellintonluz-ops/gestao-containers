@@ -2062,11 +2062,23 @@
             });
 
             selectAnoDashboard.innerHTML = options;
-            
-            // Restaurar seleção se ainda existir
-            if (anoAtual && (anoAtual === 'todos' || anosOrdenados.includes(parseInt(anoAtual)))) {
-                selectAnoDashboard.value = anoAtual;
+
+            const anoSistema = new Date().getFullYear().toString();
+            let valorSelecao = anoAtual;
+
+            // Definir padrão (primeira carga) para o ano corrente, se existir nos dados
+            if (!selectAnoDashboard.dataset.inicializado) {
+                valorSelecao = anosOrdenados.includes(parseInt(anoSistema)) ? anoSistema : 'todos';
+                selectAnoDashboard.dataset.inicializado = '1';
             }
+
+            // Se a seleção anterior ainda é válida, mantém; caso contrário, cai para o padrão disponível
+            const selecaoValida = valorSelecao === 'todos' || anosOrdenados.includes(parseInt(valorSelecao));
+            if (!selecaoValida) {
+                valorSelecao = anosOrdenados.length > 0 ? anosOrdenados[0].toString() : 'todos';
+            }
+
+            selectAnoDashboard.value = valorSelecao;
         }
 
         // Atualizar tabela de frete por transportadora
