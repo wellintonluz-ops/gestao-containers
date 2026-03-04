@@ -906,8 +906,35 @@
             </div>
 
             <div class="table-container" style="padding: 20px;">
-                <h3 style="margin-bottom: 15px;">📊 Análise Mensal de Containers e Frete</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                    <h3 style="margin: 0;">📊 Análise Mensal de Containers e Frete</h3>
+                    <button class="btn btn-primary" style="padding: 8px 14px; font-size: 14px;" onclick="resetarOcultacaoMeses()">Mostrar todos os meses</button>
+                </div>
                 <canvas id="graficoMensal" style="max-height: 400px;"></canvas>
+            </div>
+
+            <div class="table-container" style="padding: 20px; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                    <h3 style="margin: 0;">📊 Comparativo Mensal por Ano (Containers)</h3>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                        <label style="color: #cccccc; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            Modo:
+                            <select id="filtroTipoComparativo" onchange="atualizarDashboard()" style="padding: 8px 12px; border: 1px solid #3e3e42; border-radius: 6px; background: #1e1e1e; color: #cccccc; font-weight: 600;">
+                                <option value="mensal" selected>Mensal</option>
+                                <option value="acumulado">Acumulado</option>
+                            </select>
+                        </label>
+                        <label style="color: #cccccc; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            Métrica:
+                            <select id="filtroMetricaComparativo" onchange="atualizarDashboard()" style="padding: 8px 12px; border: 1px solid #3e3e42; border-radius: 6px; background: #1e1e1e; color: #cccccc; font-weight: 600;">
+                                <option value="containers" selected>Containers</option>
+                                <option value="valores">Valores</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+                <canvas id="graficoMensalComparativo" style="max-height: 420px;"></canvas>
+                <small style="color: #9aa0a6; display: block; margin-top: 8px;">Use os filtros para alternar entre visão mensal/acumulada e entre quantidade de containers ou valores de frete.</small>
             </div>
 
             <div class="table-container">
@@ -1284,6 +1311,14 @@
         let filtroStatusAtual = 'pendente'; // Filtro padrão: pendente
         let anoSelecionado = 'todos'; // Ano padrão: todos
         let graficoMensal = null; // Variável para armazenar instância do gráfico
+        let graficoMensalComparativo = null; // Gráfico comparativo por ano
+        let mesesOcultosMensal = new Set(); // Índices de meses ocultos no gráfico mensal
+        let containersFiltradosGraficoMensal = []; // Cache para re-renderizar após cliques
+
+        function resetarOcultacaoMeses() {
+            mesesOcultosMensal.clear();
+            atualizarGraficoMensal(containersFiltradosGraficoMensal);
+        }
         let unsubscribeContainers = null;
         let unsubscribeTransportadoras = null;
         let unsubscribePrevisoes = null;
@@ -1966,6 +2001,10 @@
 
             // Atualizar gráfico mensal
             atualizarGraficoMensal(containersFiltradosPorAno);
+            // Atualizar gráfico comparativo por ano (usa todos os anos disponíveis)
+            const tipoComparativo = document.getElementById('filtroTipoComparativo')?.value || 'mensal';
+            const metricaComparativo = document.getElementById('filtroMetricaComparativo')?.value || 'containers';
+            atualizarGraficoComparativoAnual(containers, tipoComparativo, metricaComparativo);
 
             // Atualizar tabela do dashboard - apenas pendentes do ano selecionado
             const containersPendentesFiltrados = containersFiltradosPorAno.filter(c => c.statusEntrega !== 'entregue');
@@ -2077,6 +2116,7 @@
 
         // Atualizar gráfico mensal
         function atualizarGraficoMensal(containersFiltrados) {
+            containersFiltradosGraficoMensal = containersFiltrados || [];
             const ctx = document.getElementById('graficoMensal');
             if (!ctx) return;
 
@@ -2113,23 +2153,44 @@
             const quantidades = meses.map((_, index) => dadosPorMes[index].quantidade);
             const valores = meses.map((_, index) => dadosPorMes[index].valorTotal);
 
-            // Médias acumuladas apenas com meses do ano selecionado que já têm dados
-            const linhaMedia = [];
-            const linhaMediaValor = [];
+            // Aplicar ocultação de meses (clicáveis)
+            const quantidadesPlot = quantidades.map((v, i) => mesesOcultosMensal.has(i) ? null : v);
+            const valoresPlot = valores.map((v, i) => mesesOcultosMensal.has(i) ? null : v);
+
+            // Médias acumuladas com aplicação retroativa apenas sobre meses visíveis
+            const linhaMedia = Array(12).fill(null);
+            const linhaMediaValor = Array(12).fill(null);
             let somaQuantAcumulada = 0;
             let somaValorAcumulado = 0;
             let mesesComDados = 0;
 
             for (let i = 0; i < 12; i++) {
+                if (mesesOcultosMensal.has(i)) {
+                    continue; // não considera mês oculto
+                }
                 const temDadoMes = quantidades[i] > 0 || valores[i] > 0;
                 if (temDadoMes) {
                     mesesComDados++;
                     somaQuantAcumulada += quantidades[i];
                     somaValorAcumulado += valores[i];
+
+                    const mediaQuant = somaQuantAcumulada / mesesComDados;
+                    const mediaValor = somaValorAcumulado / mesesComDados;
+
+                    // Ajusta a média dos meses passados do ano para o novo valor acumulado
+                    for (let j = 0; j <= i; j++) {
+                        if (!mesesOcultosMensal.has(j)) {
+                            linhaMedia[j] = mediaQuant;
+                            linhaMediaValor[j] = mediaValor;
+                        }
+                    }
+                } else if (mesesComDados > 0) {
+                    // Mantém a última média para meses sem dados posteriores
+                    const mediaQuant = somaQuantAcumulada / mesesComDados;
+                    const mediaValor = somaValorAcumulado / mesesComDados;
+                    linhaMedia[i] = mediaQuant;
+                    linhaMediaValor[i] = mediaValor;
                 }
-                const divisor = mesesComDados || 1;
-                linhaMedia.push(mesesComDados ? somaQuantAcumulada / divisor : 0);
-                linhaMediaValor.push(mesesComDados ? somaValorAcumulado / divisor : 0);
             }
 
             // Criar gráfico
@@ -2140,7 +2201,7 @@
                     datasets: [
                         {
                             label: 'Quantidade de Containers',
-                            data: quantidades,
+                            data: quantidadesPlot,
                             backgroundColor: 'rgba(0, 122, 204, 0.7)',
                             borderColor: '#007acc',
                             borderWidth: 2,
@@ -2149,7 +2210,7 @@
                         },
                         {
                             label: 'Valor Total (R$)',
-                            data: valores,
+                            data: valoresPlot,
                             backgroundColor: 'rgba(79, 172, 254, 0.5)',
                             borderColor: '#4facfe',
                             borderWidth: 2,
@@ -2189,6 +2250,21 @@
                         mode: 'index',
                         intersect: false,
                     },
+                    onClick: function(evt, elements, chart) {
+                        // Ignora duplo-clique para evitar toggles múltiplos no mesmo evento
+                        if (evt?.native?.detail > 1) return;
+                        const alvo = (chart || graficoMensal)?.getElementsAtEventForMode?.(evt, 'nearest', { intersect: true }, false)
+                            || (elements || []);
+                        if (!alvo || alvo.length === 0) return;
+                        const idx = alvo[0].index;
+                        if (idx === undefined || idx === null) return;
+                        if (mesesOcultosMensal.has(idx)) {
+                            mesesOcultosMensal.delete(idx);
+                        } else {
+                            mesesOcultosMensal.add(idx);
+                        }
+                        atualizarGraficoMensal(containersFiltradosGraficoMensal);
+                    },
                     plugins: {
                         legend: {
                             display: true,
@@ -2208,6 +2284,7 @@
                             borderWidth: 1,
                             callbacks: {
                                 label: function(context) {
+                                    if (context.parsed?.y === null || context.parsed?.y === undefined) return null;
                                     let label = context.dataset.label || '';
                                     if (label) {
                                         label += ': ';
@@ -2265,6 +2342,155 @@
                                     return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0});
                                 }
                             }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfico comparativo mensal por ano (containers lado a lado)
+        function atualizarGraficoComparativoAnual(todosContainers, modo = 'mensal', metrica = 'containers') {
+            const ctx = document.getElementById('graficoMensalComparativo');
+            if (!ctx) return;
+
+            if (graficoMensalComparativo) {
+                graficoMensalComparativo.destroy();
+            }
+
+            const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            const dadosPorAno = {};
+
+            todosContainers.forEach(c => {
+                const dataRef = obterDataReferencia(c);
+                if (!dataRef) return;
+                const data = new Date(dataRef);
+                const ano = data.getFullYear();
+                const mes = data.getMonth();
+                if (!dadosPorAno[ano]) {
+                    dadosPorAno[ano] = {
+                        quantidades: Array(12).fill(0),
+                        valores: Array(12).fill(0)
+                    };
+                }
+                dadosPorAno[ano].quantidades[mes] += 1;
+                dadosPorAno[ano].valores[mes] += parseFloat(c.frete) || 0;
+            });
+
+            const anosOrdenados = Object.keys(dadosPorAno).map(Number).sort((a, b) => a - b);
+
+            const paletaDistinta = [
+                '#007acc', // azul
+                '#4caf50', // verde
+                '#f39c12', // laranja
+                '#e91e63', // rosa
+                '#9c27b0', // roxo
+                '#00bcd4', // ciano
+                '#ff5722', // vermelho-alaranjado
+                '#8bc34a'  // verde-claro
+            ];
+
+            const usarValores = metrica === 'valores';
+
+            let labels = meses;
+            let datasets = [];
+            const tituloY = usarValores ? 'Valor de Frete (R$)' : 'Containers';
+
+            if (modo === 'acumulado') {
+                labels = anosOrdenados.map(String);
+                const totais = anosOrdenados.map(ano => {
+                    const base = dadosPorAno[ano];
+                    return usarValores
+                        ? base.valores.reduce((acc, val) => acc + val, 0)
+                        : base.quantidades.reduce((acc, val) => acc + val, 0);
+                });
+                const bg = anosOrdenados.map((_, idx) => paletaDistinta[idx % paletaDistinta.length] + 'CC');
+                const border = anosOrdenados.map((_, idx) => paletaDistinta[idx % paletaDistinta.length]);
+                datasets = [{
+                    label: usarValores ? 'Total em Frete (R$)' : 'Total de Containers',
+                    data: totais,
+                    backgroundColor: bg,
+                    borderColor: border,
+                    borderWidth: 2
+                }];
+            } else {
+                datasets = anosOrdenados.map((ano, idx) => {
+                    const cor = paletaDistinta[idx % paletaDistinta.length];
+                    const base = dadosPorAno[ano];
+                    return {
+                        label: ano.toString(),
+                        data: usarValores ? base.valores : base.quantidades,
+                        backgroundColor: cor + 'CC',
+                        borderColor: cor,
+                        borderWidth: 2
+                    };
+                });
+            }
+
+            // Caso não haja dados, mostra um dataset vazio para manter os eixos
+            if (datasets.length === 0) {
+                datasets.push({
+                    label: 'Sem dados',
+                    data: modo === 'acumulado' ? [] : Array(12).fill(0),
+                    backgroundColor: 'rgba(128, 128, 128, 0.3)',
+                    borderColor: 'rgba(128, 128, 128, 0.6)',
+                    borderWidth: 1
+                });
+            }
+
+            graficoMensalComparativo = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#cccccc'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#252526',
+                            titleColor: '#007acc',
+                            bodyColor: '#cccccc',
+                            borderColor: '#3e3e42',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.parsed.y;
+                                    const datasetLabel = context.dataset.label ? context.dataset.label + ': ' : '';
+                                    return usarValores ? datasetLabel + formatarMoeda(val) : datasetLabel + val;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: false,
+                            ticks: { color: '#cccccc' },
+                            grid: { color: '#3e3e42' }
+                        },
+                        y: {
+                            stacked: false,
+                            title: {
+                                display: true,
+                                text: tituloY,
+                                color: '#cccccc'
+                            },
+                            ticks: {
+                                color: '#cccccc',
+                                callback: function(value) { return usarValores ? formatarMoeda(value) : value; }
+                            },
+                            grid: { color: '#3e3e42' }
                         }
                     }
                 }
