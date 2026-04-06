@@ -719,11 +719,11 @@
                 <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
                     <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="importarArquivo(event)" style="display: none;">
                     <input type="file" id="fileInputCustosPorto" accept=".xlsx,.xls,.csv" onchange="importarCustosPorto(event)" style="display: none;">
-                    <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">📂 Importar Excel/CSV</button>
-                    <button class="btn btn-import" onclick="document.getElementById('fileInputCustosPorto').click()">💰 Importar Custos do Porto</button>
-                    <button class="btn btn-export" onclick="exportarParaExcel()">📤 Exportar para Excel</button>
-                    <button class="btn btn-delete" onclick="limparTodosDados()">🗑️ Limpar Todos os Dados</button>
-                    <button class="btn" style="background: #3e3e42; cursor: help;" title="Formato esperado do arquivo:&#10;• Colunas: Ref. TBX | Containers | Vencimento armazenagem PORTO | Vencimento demurrage | Data da liberação carregamento | Data carregamento | Entrada armazém parceiro | Vencimento prazo no armazém | Entrega TBX | Status | Obs | Transporte Porto x TBX | Arm. de container CHEIO | Arm. de container VAZIO | Janela especial | Mão de obra para descarregamento | Lavação container&#10;• Formato de data: DD/MM/AAAA&#10;• Suporta arquivos Excel (.xlsx, .xls) e CSV">ℹ️ Formato</button>
+                    <button id="btnImportarArquivo" class="btn btn-import" onclick="document.getElementById('fileInput').click()">📂 Importar Excel/CSV</button>
+                    <button id="btnImportarCustosPorto" class="btn btn-import" onclick="document.getElementById('fileInputCustosPorto').click()">💰 Importar Custos do Porto</button>
+                    <button id="btnExportarArquivo" class="btn btn-export" onclick="exportarParaExcel()">📤 Exportar para Excel</button>
+                    <button id="btnLimparTodosDados" class="btn btn-delete" onclick="limparTodosDados()">🗑️ Limpar Todos os Dados</button>
+                    <button id="btnFormatoImportacao" class="btn" style="background: #3e3e42; cursor: help;" title="Formato esperado do arquivo:&#10;• Colunas: Ref. TBX | Containers | Vencimento armazenagem PORTO | Vencimento demurrage | Data da liberação carregamento | Data carregamento | Entrada armazém parceiro | Vencimento prazo no armazém | Entrega TBX | Status | Obs | Transporte Porto x TBX | Arm. de container CHEIO | Arm. de container VAZIO | Janela especial | Mão de obra para descarregamento | Lavação container&#10;• Formato de data: DD/MM/AAAA&#10;• Suporta arquivos Excel (.xlsx, .xls) e CSV">ℹ️ Formato</button>
                 </div>
             </div>
 
@@ -1336,12 +1336,22 @@
                     // Conteúdos das abas
                     document.getElementById('cadastro').style.display = usuarioLogado ? '' : 'none';
                     document.getElementById('dashboard').style.display = usuarioLogado ? '' : 'none';
-                    // Ocultar seção de importação/exportação de quem não está logado
+                    // Manter a seção de importação da consulta visível, mas restrita a usuários logados.
                     document.querySelectorAll('.import-section').forEach(sec => {
-                        sec.style.display = usuarioLogado ? '' : 'none';
+                        sec.style.display = '';
                     });
+                    const btnImportarArquivo = document.getElementById('btnImportarArquivo');
+                    const btnImportarCustosPorto = document.getElementById('btnImportarCustosPorto');
+                    const btnExportarArquivo = document.getElementById('btnExportarArquivo');
+                    const btnLimparTodosDados = document.getElementById('btnLimparTodosDados');
+                    const btnFormatoImportacao = document.getElementById('btnFormatoImportacao');
+                    if (btnImportarArquivo) btnImportarArquivo.style.display = usuarioLogado ? '' : 'none';
+                    if (btnImportarCustosPorto) btnImportarCustosPorto.style.display = usuarioLogado ? '' : 'none';
+                    if (btnExportarArquivo) btnExportarArquivo.style.display = usuarioLogado ? '' : 'none';
+                    if (btnLimparTodosDados) btnLimparTodosDados.style.display = usuarioLogado ? '' : 'none';
+                    if (btnFormatoImportacao) btnFormatoImportacao.style.display = usuarioLogado ? '' : 'none';
                     // Botões de ação restritos (exceto navegação de semana)
-                    const botoesRestritos = document.querySelectorAll('.btn-edit, .btn-delete, .btn-import, .btn-export, .btn-status, [onclick^="abrirModalRegistro"], [onclick^="limparTodosDados"], [onclick^="marcarTodosComoEntregue"]');
+                    const botoesRestritos = document.querySelectorAll('.btn-edit, .btn-delete, .btn-export, .btn-status, [onclick^="abrirModalRegistro"], [onclick^="limparTodosDados"], [onclick^="marcarTodosComoEntregue"]');
                     botoesRestritos.forEach(btn => {
                         if (btn.closest('#planejador') || btn.closest('#consulta')) {
                             btn.style.display = usuarioLogado ? '' : 'none';
