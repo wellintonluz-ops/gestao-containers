@@ -718,7 +718,9 @@
                 <h3 style="margin-bottom: 15px; color: #007acc;">📥 Importar/Exportar Dados</h3>
                 <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
                     <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="importarArquivo(event)" style="display: none;">
+                    <input type="file" id="fileInputCustosPorto" accept=".xlsx,.xls,.csv" onchange="importarCustosPorto(event)" style="display: none;">
                     <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">📂 Importar Excel/CSV</button>
+                    <button class="btn btn-import" onclick="document.getElementById('fileInputCustosPorto').click()">💰 Importar Custos do Porto</button>
                     <button class="btn btn-export" onclick="exportarParaExcel()">📤 Exportar para Excel</button>
                     <button class="btn btn-delete" onclick="limparTodosDados()">🗑️ Limpar Todos os Dados</button>
                     <button class="btn" style="background: #3e3e42; cursor: help;" title="Formato esperado do arquivo:&#10;• Colunas: Ref. TBX | Containers | Vencimento armazenagem PORTO | Vencimento demurrage | Data da liberação carregamento | Data carregamento | Entrada armazém parceiro | Vencimento prazo no armazém | Entrega TBX | Status | Obs | Transporte Porto x TBX | Arm. de container CHEIO | Arm. de container VAZIO | Janela especial | Mão de obra para descarregamento | Lavação container&#10;• Formato de data: DD/MM/AAAA&#10;• Suporta arquivos Excel (.xlsx, .xls) e CSV">ℹ️ Formato</button>
@@ -753,13 +755,20 @@
                             <th class="col-private">Transportadora</th>
                             <th class="col-private">Canal</th>
                             <th class="col-private">Frete (R$)</th>
+                            <th class="col-private">Valor 1° período</th>
                             <th class="col-private">Valor 2° período</th>
                             <th class="col-private">Valor Armazenagem Pátio</th>
                             <th class="col-private">Valor Janela Especial</th>
+                            <th class="col-private">Controle de acesso</th>
+                            <th class="col-private">Frete extra - Local de entrega</th>
+                            <th class="col-private">Serviço de entrega de container</th>
+                            <th class="col-private">Adicional BI-TREM</th>
+                            <th>Ações</th>
+                        </tr>
                     </thead>
                     <tbody id="tableBody">
                         <tr>
-                            <td colspan="18" class="empty-state" id="consultaEmptyStateCell">
+                            <td colspan="24" class="empty-state" id="consultaEmptyStateCell">
                                 <div>
                                     <div style="font-size: 3em;">📦</div>
                                     <p>Nenhum registro encontrado. Adicione um novo registro na aba "Registro".</p>
@@ -875,11 +884,16 @@
                 </select>
             </div>
             
-            <div class="stats">
+            <div class="stats" style="margin-bottom: 20px;">
                 <div class="stat-card">
                     <h3 id="totalContainers">0</h3>
                     <p>Total de Containers</p>
                 </div>
+            </div>
+
+            <div class="form-section" style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px; color: #007acc;">Custo Operação (TBX)</h3>
+                <div class="stats" style="margin-bottom: 0;">
                 <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
                     <h3 id="totalFrete">R$ 0,00</h3>
                     <p>Total em Frete</p>
@@ -889,10 +903,47 @@
                     <p style="margin-bottom: 4px;">Valor 2º Período</p>
                     <small id="totalPeriodo2Qtd" style="color: #fbe9ff; font-weight: 600;">0 container(s)</small>
                 </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #1fa2ff 0%, #12d8fa 50%, #a6ffcb 100%);">
+                    <h3 id="totalPatio">R$ 0,00</h3>
+                    <p style="margin-bottom: 4px;">Armazenagem em Pátio</p>
+                    <small id="totalPatioQtd" style="color: #eefcff; font-weight: 600;">0 container(s)</small>
+                </div>
                 <div class="stat-card" style="background: linear-gradient(135deg, #7F7FD5 0%, #86A8E7 50%, #91EAE4 100%);">
                     <h3 id="totalJanela">R$ 0,00</h3>
                     <p style="margin-bottom: 4px;">Janela Especial</p>
                     <small id="totalJanelaQtd" style="color: #e8f5ff; font-weight: 600;">0 container(s)</small>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #ff9966 0%, #ff5e62 100%);">
+                    <h3 id="totalFreteExtra">R$ 0,00</h3>
+                    <p style="margin-bottom: 4px;">Frete Extra - Local de Entrega</p>
+                    <small id="totalFreteExtraQtd" style="color: #fff1eb; font-weight: 600;">0 container(s)</small>
+                </div>
+                </div>
+            </div>
+
+            <div class="form-section" style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px; color: #007acc;">Custo Porto</h3>
+                <div class="stats" style="margin-bottom: 0;">
+                <div class="stat-card" style="background: linear-gradient(135deg, #ffb347 0%, #ffcc33 100%);">
+                    <h3 id="totalPeriodo1">R$ 0,00</h3>
+                    <p style="margin-bottom: 4px;">Valor 1º Período</p>
+                    <small id="totalPeriodo1Qtd" style="color: #fff4d6; font-weight: 600;">0 container(s)</small>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);">
+                    <h3 id="totalControleAcesso">R$ 0,00</h3>
+                    <p style="margin-bottom: 4px;">Controle de Acesso</p>
+                    <small id="totalControleAcessoQtd" style="color: #ddfff5; font-weight: 600;">0 container(s)</small>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);">
+                    <h3 id="totalServicoEntrega">R$ 0,00</h3>
+                    <p style="margin-bottom: 4px;">Serviço de Entrega</p>
+                    <small id="totalServicoEntregaQtd" style="color: #fff8d6; font-weight: 600;">0 container(s)</small>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #654ea3 0%, #eaafc8 100%);">
+                    <h3 id="totalBitrem">R$ 0,00</h3>
+                    <p style="margin-bottom: 4px;">Adicional BI-TREM</p>
+                    <small id="totalBitremQtd" style="color: #fff0fb; font-weight: 600;">0 container(s)</small>
+                </div>
                 </div>
             </div>
 
@@ -1162,6 +1213,10 @@
                             <input type="text" id="frete" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
                         </div>
                         <div class="form-group">
+                            <label for="valorPeriodo1">Valor 1° período</label>
+                            <input type="text" id="valorPeriodo1" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
+                        </div>
+                        <div class="form-group">
                             <label for="valorPeriodo2">Valor 2° período</label>
                             <input type="text" id="valorPeriodo2" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
                         </div>
@@ -1172,6 +1227,22 @@
                         <div class="form-group">
                             <label for="valorJanela">Valor de janela especial</label>
                             <input type="text" id="valorJanela" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
+                        </div>
+                        <div class="form-group">
+                            <label for="valorControleAcesso">Controle de acesso</label>
+                            <input type="text" id="valorControleAcesso" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
+                        </div>
+                        <div class="form-group">
+                            <label for="freteExtraLocalEntrega">Frete extra - Local de entrega</label>
+                            <input type="text" id="freteExtraLocalEntrega" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
+                        </div>
+                        <div class="form-group">
+                            <label for="servicoEntregaContainer">Serviço de entrega de container</label>
+                            <input type="text" id="servicoEntregaContainer" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
+                        </div>
+                        <div class="form-group">
+                            <label for="adicionalBitrem">Adicional BI-TREM</label>
+                            <input type="text" id="adicionalBitrem" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)">
                         </div>
                     </div>
 
@@ -1290,7 +1361,7 @@
                     // Ajustar colspan do estado vazio conforme visibilidade
                     const emptyCell = document.getElementById('consultaEmptyStateCell');
                     if (emptyCell) {
-                        emptyCell.colSpan = usuarioLogado ? 18 : 6;
+                        emptyCell.colSpan = usuarioLogado ? 24 : 6;
                     }
                 }
                 // Fechar modal login ao clicar fora
@@ -1631,9 +1702,14 @@
                 previsaoDescarregamento: document.getElementById('previsaoDescarregamento').value,
                 transportadora: document.getElementById('transportadora').value,
                 frete: converterMoedaParaNumero(document.getElementById('frete').value),
+                valorPeriodo1: converterMoedaParaNumero(document.getElementById('valorPeriodo1').value),
                 valorPeriodo2: converterMoedaParaNumero(document.getElementById('valorPeriodo2').value),
                 valorPatio: converterMoedaParaNumero(document.getElementById('valorPatio').value),
                 valorJanela: converterMoedaParaNumero(document.getElementById('valorJanela').value),
+                valorControleAcesso: converterMoedaParaNumero(document.getElementById('valorControleAcesso').value),
+                freteExtraLocalEntrega: converterMoedaParaNumero(document.getElementById('freteExtraLocalEntrega').value),
+                servicoEntregaContainer: converterMoedaParaNumero(document.getElementById('servicoEntregaContainer').value),
+                adicionalBitrem: converterMoedaParaNumero(document.getElementById('adicionalBitrem').value),
                 statusEntrega: editandoId ? containers.find(c => c.id === editandoId)?.statusEntrega || 'pendente' : 'pendente'
             };
 
@@ -1718,7 +1794,7 @@
             if (containersFiltrados.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="18" class="empty-state">
+                        <td colspan="24" class="empty-state">
                             <div>
                                 <div style="font-size: 3em;">📦</div>
                                 <p>Nenhum registro encontrado nesta categoria.</p>
@@ -1786,9 +1862,14 @@
                     <td class="col-private">${c.transportadora || '-'}</td>
                     <td class="col-private">${c.canal || '-'}</td>
                     <td class="col-private">${formatarMoeda(c.frete)}</td>
+                    <td class="col-private">${formatarMoeda(c.valorPeriodo1)}</td>
                     <td class="col-private">${formatarMoeda(c.valorPeriodo2)}</td>
                     <td class="col-private">${formatarMoeda(c.valorPatio)}</td>
                     <td class="col-private">${formatarMoeda(c.valorJanela)}</td>
+                    <td class="col-private">${formatarMoeda(c.valorControleAcesso)}</td>
+                    <td class="col-private">${formatarMoeda(c.freteExtraLocalEntrega)}</td>
+                    <td class="col-private">${formatarMoeda(c.servicoEntregaContainer)}</td>
+                    <td class="col-private">${formatarMoeda(c.adicionalBitrem)}</td>
                     <td>${acoes}</td>
                 </tr>
             `;
@@ -1806,7 +1887,7 @@
                     if (rotuloDia !== ultimoDiaAgrupado) {
                         linhas.push(`
                 <tr class="day-separator">
-                    <td colspan="18">${rotuloDia}${textoPallets}</td>
+                    <td colspan="24">${rotuloDia}${textoPallets}</td>
                 </tr>
             `);
                         ultimoDiaAgrupado = rotuloDia;
@@ -2010,15 +2091,42 @@
             const totalFrete = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.frete) || 0), 0);
             document.getElementById('totalFrete').textContent = formatarMoeda(totalFrete);
 
-            // Calcular total de valor do 2º período e janela especial
+            // Calcular totais adicionais de custos
+            const totalPeriodo1 = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.valorPeriodo1) || 0), 0);
             const totalPeriodo2 = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.valorPeriodo2) || 0), 0);
+            const totalPatio = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.valorPatio) || 0), 0);
             const totalJanela = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.valorJanela) || 0), 0);
+            const totalControleAcesso = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.valorControleAcesso) || 0), 0);
+            const totalFreteExtra = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.freteExtraLocalEntrega) || 0), 0);
+            const totalServicoEntrega = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.servicoEntregaContainer) || 0), 0);
+            const totalBitrem = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.adicionalBitrem) || 0), 0);
+
+            const qtdPeriodo1 = containersFiltradosPorAno.filter(c => (parseFloat(c.valorPeriodo1) || 0) > 0).length;
             const qtdPeriodo2 = containersFiltradosPorAno.filter(c => (parseFloat(c.valorPeriodo2) || 0) > 0).length;
+            const qtdPatio = containersFiltradosPorAno.filter(c => (parseFloat(c.valorPatio) || 0) > 0).length;
             const qtdJanela = containersFiltradosPorAno.filter(c => (parseFloat(c.valorJanela) || 0) > 0).length;
+            const qtdControleAcesso = containersFiltradosPorAno.filter(c => (parseFloat(c.valorControleAcesso) || 0) > 0).length;
+            const qtdFreteExtra = containersFiltradosPorAno.filter(c => (parseFloat(c.freteExtraLocalEntrega) || 0) > 0).length;
+            const qtdServicoEntrega = containersFiltradosPorAno.filter(c => (parseFloat(c.servicoEntregaContainer) || 0) > 0).length;
+            const qtdBitrem = containersFiltradosPorAno.filter(c => (parseFloat(c.adicionalBitrem) || 0) > 0).length;
+
+            document.getElementById('totalPeriodo1').textContent = formatarMoeda(totalPeriodo1);
             document.getElementById('totalPeriodo2').textContent = formatarMoeda(totalPeriodo2);
+            document.getElementById('totalPatio').textContent = formatarMoeda(totalPatio);
             document.getElementById('totalJanela').textContent = formatarMoeda(totalJanela);
+            document.getElementById('totalControleAcesso').textContent = formatarMoeda(totalControleAcesso);
+            document.getElementById('totalFreteExtra').textContent = formatarMoeda(totalFreteExtra);
+            document.getElementById('totalServicoEntrega').textContent = formatarMoeda(totalServicoEntrega);
+            document.getElementById('totalBitrem').textContent = formatarMoeda(totalBitrem);
+
+            document.getElementById('totalPeriodo1Qtd').textContent = `${qtdPeriodo1} container(s)`;
             document.getElementById('totalPeriodo2Qtd').textContent = `${qtdPeriodo2} container(s)`;
+            document.getElementById('totalPatioQtd').textContent = `${qtdPatio} container(s)`;
             document.getElementById('totalJanelaQtd').textContent = `${qtdJanela} container(s)`;
+            document.getElementById('totalControleAcessoQtd').textContent = `${qtdControleAcesso} container(s)`;
+            document.getElementById('totalFreteExtraQtd').textContent = `${qtdFreteExtra} container(s)`;
+            document.getElementById('totalServicoEntregaQtd').textContent = `${qtdServicoEntrega} container(s)`;
+            document.getElementById('totalBitremQtd').textContent = `${qtdBitrem} container(s)`;
 
             // Atualizar tabela de frete por transportadora - com filtro de ano
             atualizarFreteTransportadora(containersFiltradosPorAno);
@@ -2571,6 +2679,16 @@
             return limpo.substring(0, 11);
         }
 
+        function normalizarTexto(valor) {
+            if (!valor) return '';
+            return String(valor)
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toUpperCase()
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
         function calcularPalletsItem(codigo, quantidade) {
             if (!codigo || !Array.isArray(parametrosPallet)) return null;
             const codigoNorm = String(codigo).toUpperCase();
@@ -2646,9 +2764,14 @@
                             transportadora: row[11] || '',
                             canal: row[12] || '',
                             frete: extrairValor(row[13]),
-                            valorPeriodo2: extrairValor(row[14]),
-                            valorPatio: extrairValor(row[15]),
-                            valorJanela: extrairValor(row[16]),
+                            valorPeriodo1: extrairValor(row[14]),
+                            valorPeriodo2: extrairValor(row[15]),
+                            valorPatio: extrairValor(row[16]),
+                            valorJanela: extrairValor(row[17]),
+                            valorControleAcesso: extrairValor(row[18]),
+                            freteExtraLocalEntrega: extrairValor(row[19]),
+                            servicoEntregaContainer: extrairValor(row[20]),
+                            adicionalBitrem: extrairValor(row[21]),
                             statusEntrega: 'entregue' // Dados importados são marcados como entregues
                         };
 
@@ -2669,6 +2792,184 @@
                     alert('❌ Erro ao importar arquivo. Verifique o formato e tente novamente.');
                 }
             };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Importar custos da base de faturamento do porto
+        function importarCustosPorto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                    const custosPorContainer = new Map();
+                    let idxContainer = -1;
+                    let idxDescricao = -1;
+                    let idxTotal = -1;
+                    let idxPrecoUnitario = -1;
+                    let eventoAtual = '';
+
+                    rows.forEach(row => {
+                        const textos = row.map(cell => normalizarTexto(cell));
+
+                        // Captura o bloco corrente (ex.: ARMAZENAGEM..., CONTROLE DE ACESSO..., RETIRADA...)
+                        if (textos[0] === 'EVENTO D') {
+                            eventoAtual = normalizarTexto(row[1] || '');
+                            return;
+                        }
+
+                        // Detecta cabeçalhos de bloco repetidos na planilha do porto
+                        if (textos.includes('CONTAINER') && textos.includes('DESCRICAO') && textos.includes('TOTAL')) {
+                            idxContainer = textos.findIndex(v => v === 'CONTAINER');
+                            idxDescricao = textos.findIndex(v => v === 'DESCRICAO');
+                            idxPrecoUnitario = textos.findIndex(v => v === 'PRECO UNITARIO');
+                            const indicesTotal = textos
+                                .map((v, i) => v === 'TOTAL' ? i : -1)
+                                .filter(i => i >= 0);
+                            idxTotal = indicesTotal.length > 0 ? indicesTotal[indicesTotal.length - 1] : -1;
+                            return;
+                        }
+
+                        if (idxContainer < 0 || idxDescricao < 0 || idxTotal < 0) return;
+
+                        // No layout do porto, o container vem na coluna B (índice 1).
+                        // Mantém fallback para o índice detectado no cabeçalho.
+                        const containerOriginal = row[1] || row[idxContainer];
+                        const descricaoOriginal = row[idxDescricao];
+                        const totalOriginal = row[idxTotal];
+                        const precoUnitarioOriginal = idxPrecoUnitario >= 0 ? row[idxPrecoUnitario] : '';
+
+                        const container = normalizarNumeroContainer(containerOriginal);
+                        const descricao = normalizarTexto(descricaoOriginal);
+                        const valorTexto = extrairValor(totalOriginal);
+                        const valorUnitarioTexto = extrairValor(precoUnitarioOriginal);
+                        const valorNumero = parseFloat(valorTexto);
+                        const valorUnitarioNumero = parseFloat(valorUnitarioTexto);
+                        const valorBase = Number.isNaN(valorNumero)
+                            ? (Number.isNaN(valorUnitarioNumero) ? NaN : valorUnitarioNumero)
+                            : valorNumero;
+
+                        if (!container || Number.isNaN(valorBase)) return;
+
+                        // Ignora linhas de totalização do bloco
+                        if (textos.includes('TOTAL EVENTO:')) return;
+
+                        if (!custosPorContainer.has(container)) {
+                            custosPorContainer.set(container, {});
+                        }
+
+                        const custos = custosPorContainer.get(container);
+                        const valorNormalizado = String(valorBase);
+
+                        const ehArmazenagemPeriodo1 =
+                            (descricao.includes('ARMAZENAGEM DE IMPORTACAO CHEIO') && descricao.includes('1 PERIODO'))
+                            || (!descricao && eventoAtual.includes('ARMAZENAGEM DE IMPORTACAO CHEIO - 1 PERIODO'));
+
+                        const ehArmazenagemPeriodo2 =
+                            (descricao.includes('ARMAZENAGEM DE IMPORTACAO CHEIO') && descricao.includes('2 PERIODO'))
+                            || (!descricao && eventoAtual.includes('ARMAZENAGEM DE IMPORTACAO CHEIO - 2 PERIODO'));
+
+                        const ehJanelaEspecial =
+                            descricao.includes('AGENDAMENTO ESPECIAL - IMPORTACAO')
+                            || eventoAtual.includes('AGENDAMENTO ESPECIAL');
+
+                        const ehControleAcesso =
+                            descricao.includes('CONTROLE DE ACESSO')
+                            || eventoAtual.includes('CONTROLE DE ACESSO');
+
+                        const ehServicoEntrega =
+                            descricao.includes('SERVICO DE ENTREGA DE CONTAINER')
+                            || eventoAtual.includes('RETIRADA DE IMPORTACAO');
+
+                        const ehAdicionalBitrem =
+                            descricao.includes('ADICIONAL RECEBIMENTO/RETIRADA BI-TREM')
+                            || eventoAtual.includes('ADICIONAL RECEBIMENTO/RETIRADA BI-TREM');
+
+                        if (ehArmazenagemPeriodo1) {
+                            custos.valorPeriodo1 = valorNormalizado;
+                        }
+
+                        if (ehArmazenagemPeriodo2) {
+                            custos.valorPeriodo2 = valorNormalizado;
+                        }
+
+                        if (ehJanelaEspecial) {
+                            custos.valorJanela = valorNormalizado;
+                        }
+
+                        if (ehControleAcesso) {
+                            custos.valorControleAcesso = valorNormalizado;
+                            // Mantem compatibilidade com a regra solicitada, caso o serviço venha sob a mesma descrição
+                            if (!custos.servicoEntregaContainer) {
+                                custos.servicoEntregaContainer = valorNormalizado;
+                            }
+                        }
+
+                        if (ehServicoEntrega) {
+                            custos.servicoEntregaContainer = valorNormalizado;
+                        }
+
+                        if (ehAdicionalBitrem) {
+                            custos.adicionalBitrem = valorNormalizado;
+                        }
+                    });
+
+                    if (custosPorContainer.size === 0) {
+                        alert('⚠️ Nenhum custo válido foi encontrado na planilha do porto.');
+                        event.target.value = '';
+                        return;
+                    }
+
+                    const promessas = [];
+                    let registrosAtualizados = 0;
+                    const containersComMatch = new Set();
+
+                    containers.forEach(registro => {
+                        const chave = normalizarNumeroContainer(registro.container);
+                        const custos = custosPorContainer.get(chave);
+                        if (!custos) return;
+
+                        containersComMatch.add(chave);
+                        let alterou = false;
+
+                        ['valorPeriodo1', 'valorPeriodo2', 'valorJanela', 'valorControleAcesso', 'servicoEntregaContainer', 'adicionalBitrem'].forEach(campo => {
+                            if (custos[campo] !== undefined && String(registro[campo] || '') !== String(custos[campo])) {
+                                registro[campo] = custos[campo];
+                                alterou = true;
+                            }
+                        });
+
+                        if (alterou) {
+                            promessas.push(salvarContainerFirebase(registro));
+                            registrosAtualizados++;
+                        }
+                    });
+
+                    await Promise.all(promessas);
+
+                    const semCorrespondencia = custosPorContainer.size - containersComMatch.size;
+                    atualizarTabela();
+                    atualizarDashboard();
+
+                    alert(
+                        `✅ Importação de custos concluída!\n` +
+                        `• Containers de custo lidos: ${custosPorContainer.size}\n` +
+                        `• Registros atualizados: ${registrosAtualizados}\n` +
+                        `• Containers sem correspondência na base: ${semCorrespondencia}`
+                    );
+                    event.target.value = '';
+                } catch (error) {
+                    console.error('Erro ao importar custos do porto:', error);
+                    alert('❌ Erro ao importar custos do porto. Verifique o arquivo e tente novamente.');
+                }
+            };
+
             reader.readAsArrayBuffer(file);
         }
 
@@ -2766,9 +3067,14 @@
                 'Transportadora': c.transportadora || '',
                 'Canal': c.canal || '',
                 'Frete (R$)': c.frete || '',
+                'Valor 1° período': c.valorPeriodo1 || '',
                 'Valor 2° período': c.valorPeriodo2 || '',
                 'Valor Armazenagem Pátio': c.valorPatio || '',
-                'Valor Janela Especial': c.valorJanela || ''
+                'Valor Janela Especial': c.valorJanela || '',
+                'Controle de acesso': c.valorControleAcesso || '',
+                'Frete extra - Local de entrega': c.freteExtraLocalEntrega || '',
+                'Serviço de entrega de container': c.servicoEntregaContainer || '',
+                'Adicional BI-TREM': c.adicionalBitrem || ''
             }));
 
             const ws = XLSX.utils.json_to_sheet(dados);
@@ -3441,9 +3747,14 @@
             document.getElementById('previsaoDescarregamento').value = container.previsaoDescarregamento || '';
             document.getElementById('transportadora').value = container.transportadora || '';
             document.getElementById('frete').value = container.frete ? formatarMoeda(container.frete) : '';
+            document.getElementById('valorPeriodo1').value = container.valorPeriodo1 ? formatarMoeda(container.valorPeriodo1) : '';
             document.getElementById('valorPeriodo2').value = container.valorPeriodo2 ? formatarMoeda(container.valorPeriodo2) : '';
             document.getElementById('valorPatio').value = container.valorPatio ? formatarMoeda(container.valorPatio) : '';
             document.getElementById('valorJanela').value = container.valorJanela ? formatarMoeda(container.valorJanela) : '';
+            document.getElementById('valorControleAcesso').value = container.valorControleAcesso ? formatarMoeda(container.valorControleAcesso) : '';
+            document.getElementById('freteExtraLocalEntrega').value = container.freteExtraLocalEntrega ? formatarMoeda(container.freteExtraLocalEntrega) : '';
+            document.getElementById('servicoEntregaContainer').value = container.servicoEntregaContainer ? formatarMoeda(container.servicoEntregaContainer) : '';
+            document.getElementById('adicionalBitrem').value = container.adicionalBitrem ? formatarMoeda(container.adicionalBitrem) : '';
 
             // abrir modal sem resetar o estado de edição
             document.getElementById('modalRegistro').style.display = 'block';
