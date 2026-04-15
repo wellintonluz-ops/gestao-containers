@@ -731,7 +731,8 @@
                 <button class="sub-tab active" onclick="filtrarPorStatus('pendente')">Containers Pendentes</button>
                 <button class="sub-tab" onclick="filtrarPorStatus('entregue')">Containers Entregues</button>
                 <button class="sub-tab" onclick="filtrarPorStatus('todos')">Todos os Containers</button>
-                <button class="btn btn-status" onclick="marcarTodosComoEntregue()" style="margin-left: auto;">✅ Marcar Todos como Entregue</button>
+                <button id="btnToggleColunasDetalhes" class="btn" onclick="alternarColunasDetalhes()" style="margin-left: auto; background: #455a64; color: #fff;">▶️ Exibir colunas de processo</button>
+                <button class="btn btn-status" onclick="marcarTodosComoEntregue()">✅ Marcar Todos como Entregue</button>
             </div>
             
             <input type="text" id="searchInput" class="search-box" placeholder="🔍 Buscar por Ref. TBX, Container, Transportadora..." onkeyup="filtrarTabela()">
@@ -743,14 +744,14 @@
                             <th>Status</th>
                             <th>Ref. TBX</th>
                             <th>N° Container</th>
-                            <th class="col-private">Chegada Navio</th>
-                            <th class="col-private">Liberação Canal</th>
-                            <th class="col-private">Data Liberação</th>
-                            <th class="col-private">Data Carregamento</th>
-                            <th class="col-private">Venc. Porto</th>
-                            <th class="col-private">Venc. Demurrage</th>
+                            <th class="col-private col-expandable">Chegada Navio</th>
+                            <th class="col-private col-expandable">Liberação Canal</th>
+                            <th class="col-private col-expandable">Data Liberação</th>
+                            <th class="col-private col-expandable">Data Carregamento</th>
+                            <th class="col-private col-expandable">Venc. Porto</th>
+                            <th class="col-private col-expandable">Venc. Demurrage</th>
+                            <th class="col-private col-expandable">Registro DI</th>
                             <th>Entrega TBX</th>
-                            <th class="col-private">Registro DI</th>
                             <th>Previsão Descarga</th>
                             <th class="col-private">Transportadora</th>
                             <th class="col-private">Canal</th>
@@ -1273,6 +1274,7 @@
                 // --- LOGIN SIMPLES ---
                 let usuarioLogado = false;
                 let listenersAtivos = false;
+                let colunasDetalhesExpandidas = false;
                 function abrirModalLogin() {
                     document.getElementById('modalLogin').style.display = 'flex';
                     document.getElementById('loginUsuario').focus();
@@ -1303,11 +1305,43 @@
                     // Voltar para a aba planejador ao sair
                     openTab('planejador');
                 }
+
+                function atualizarTextoBotaoColunasDetalhes() {
+                    const btn = document.getElementById('btnToggleColunasDetalhes');
+                    if (!btn) return;
+                    btn.textContent = colunasDetalhesExpandidas
+                        ? '🔽 Ocultar colunas de processo'
+                        : '▶️ Exibir colunas de processo';
+                }
+
+                function atualizarColspanConsulta() {
+                    const headers = document.querySelectorAll('#containerTable thead th');
+                    const colunasVisiveis = Array.from(headers).filter(th => th.style.display !== 'none').length || 1;
+                    const emptyCell = document.getElementById('consultaEmptyStateCell');
+                    if (emptyCell) {
+                        emptyCell.colSpan = colunasVisiveis;
+                    }
+                    document.querySelectorAll('#containerTable .day-separator td').forEach(td => {
+                        td.colSpan = colunasVisiveis;
+                    });
+                }
+
+                function alternarColunasDetalhes() {
+                    colunasDetalhesExpandidas = !colunasDetalhesExpandidas;
+                    atualizarTextoBotaoColunasDetalhes();
+                    aplicarVisibilidadeColunasPrivadas();
+                }
+
                 function aplicarVisibilidadeColunasPrivadas() {
                     const privateCols = document.querySelectorAll('.col-private');
                     privateCols.forEach(col => {
                         col.style.display = usuarioLogado ? '' : 'none';
                     });
+                    const expandableCols = document.querySelectorAll('.col-expandable');
+                    expandableCols.forEach(col => {
+                        col.style.display = (usuarioLogado && colunasDetalhesExpandidas) ? '' : 'none';
+                    });
+                    atualizarColspanConsulta();
                 }
 
                 function atualizarPermissoes() {
@@ -1345,11 +1379,17 @@
                     const btnExportarArquivo = document.getElementById('btnExportarArquivo');
                     const btnLimparTodosDados = document.getElementById('btnLimparTodosDados');
                     const btnFormatoImportacao = document.getElementById('btnFormatoImportacao');
+                    const btnToggleColunasDetalhes = document.getElementById('btnToggleColunasDetalhes');
                     if (btnImportarArquivo) btnImportarArquivo.style.display = usuarioLogado ? '' : 'none';
                     if (btnImportarCustosPorto) btnImportarCustosPorto.style.display = usuarioLogado ? '' : 'none';
                     if (btnExportarArquivo) btnExportarArquivo.style.display = usuarioLogado ? '' : 'none';
                     if (btnLimparTodosDados) btnLimparTodosDados.style.display = usuarioLogado ? '' : 'none';
                     if (btnFormatoImportacao) btnFormatoImportacao.style.display = usuarioLogado ? '' : 'none';
+                    if (btnToggleColunasDetalhes) btnToggleColunasDetalhes.style.display = usuarioLogado ? '' : 'none';
+                    if (!usuarioLogado) {
+                        colunasDetalhesExpandidas = false;
+                    }
+                    atualizarTextoBotaoColunasDetalhes();
                     // Botões de ação restritos (exceto navegação de semana)
                     const botoesRestritos = document.querySelectorAll('.btn-edit, .btn-delete, .btn-export, .btn-status, [onclick^="abrirModalRegistro"], [onclick^="limparTodosDados"], [onclick^="marcarTodosComoEntregue"]');
                     botoesRestritos.forEach(btn => {
@@ -1367,12 +1407,6 @@
 
                     // Colunas privadas na consulta
                     aplicarVisibilidadeColunasPrivadas();
-
-                    // Ajustar colspan do estado vazio conforme visibilidade
-                    const emptyCell = document.getElementById('consultaEmptyStateCell');
-                    if (emptyCell) {
-                        emptyCell.colSpan = usuarioLogado ? 24 : 6;
-                    }
                 }
                 // Fechar modal login ao clicar fora
                 document.getElementById('modalLogin').addEventListener('click', function(e) {
@@ -1860,14 +1894,14 @@
                     </td>
                     <td><strong>${c.refTbx}</strong></td>
                     <td>${c.container}</td>
-                    <td class="col-private">${formatarData(c.chegadaNavio)}</td>
-                    <td class="col-private">${formatarData(c.liberacaoCanal)}</td>
-                    <td class="col-private">${formatarData(c.dataLiberacao)}</td>
-                    <td class="col-private">${formatarData(c.dataCarregamento)}</td>
-                    <td class="col-private">${formatarData(c.vencimentoPorto)}</td>
-                    <td class="col-private">${formatarData(c.vencimentoDemurrage)}</td>
+                    <td class="col-private col-expandable">${formatarData(c.chegadaNavio)}</td>
+                    <td class="col-private col-expandable">${formatarData(c.liberacaoCanal)}</td>
+                    <td class="col-private col-expandable">${formatarData(c.dataLiberacao)}</td>
+                    <td class="col-private col-expandable">${formatarData(c.dataCarregamento)}</td>
+                    <td class="col-private col-expandable">${formatarData(c.vencimentoPorto)}</td>
+                    <td class="col-private col-expandable">${formatarData(c.vencimentoDemurrage)}</td>
+                    <td class="col-private col-expandable">${formatarData(c.registroDi)}</td>
                     <td>${formatarData(c.entregaTbx)}</td>
-                    <td class="col-private">${formatarData(c.registroDi)}</td>
                     <td>${c.previsaoDescarregamento || '-'}</td>
                     <td class="col-private">${c.transportadora || '-'}</td>
                     <td class="col-private">${c.canal || '-'}</td>
