@@ -4324,7 +4324,8 @@
                 const url = URL.createObjectURL(file);
                 img.onload = () => {
                     try {
-                        const scale = Math.max(1, Math.min(4, 2400 / img.width));
+                        // Escala mínima 2× para OCR ter resolução suficiente para ler dígitos pequenos
+                        const scale = Math.max(2, Math.min(4, 3200 / img.width));
                         const canvas = document.createElement('canvas');
                         canvas.width  = Math.round(img.width  * scale);
                         canvas.height = Math.round(img.height * scale);
@@ -4332,6 +4333,30 @@
                         ctx.imageSmoothingEnabled = true;
                         ctx.imageSmoothingQuality = 'high';
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const d = imgData.data;
+                        for (let i = 0; i < d.length; i += 4) {
+                            const r = d[i], g = d[i + 1], b = d[i + 2];
+                            const max = Math.max(r, g, b);
+                            const min = Math.min(r, g, b);
+                            // Pixels "quase brancos" (fundo): todos os canais > 200
+                            const isNearWhite = r > 200 && g > 200 && b > 200;
+                            if (!isNearWhite && max - min >= 60) {
+                                // Texto colorido (vermelho, azul etc.) → preto puro
+                                d[i] = 0; d[i + 1] = 0; d[i + 2] = 0;
+                            } else if (!isNearWhite) {
+                                // Texto escuro/cinza → escurecer para melhor contraste
+                                const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                                const v = gray < 160 ? 0 : 255;
+                                d[i] = v; d[i + 1] = v; d[i + 2] = v;
+                            } else {
+                                // Fundo branco → branco puro
+                                d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
+                            }
+                        }
+                        ctx.putImageData(imgData, 0, 0);
+
                         URL.revokeObjectURL(url);
                         canvas.toBlob(b => resolve(b || file), 'image/png');
                     } catch (e) {
@@ -4520,11 +4545,20 @@
             }
 
             // Estratégia A: datas na mesma faixa Y (OCR linha a linha)
-            const datasLinha = items
+            // Deduplica por coluna X para evitar pegar múltiplas linhas da mesma coluna dentro da banda Y
+            const datasLinhaBruta = items
                 .filter(it => datePat.test(it.raw) && Math.abs(it.y - containerY) <= yTol && it.x >= containerX - 50)
-                .sort((a, b) => a.x - b.x)
-                .map(it => toISO(it.raw))
-                .filter(Boolean);
+                .sort((a, b) => a.x - b.x);
+            const colunasA = [];
+            datasLinhaBruta.forEach(it => {
+                const col = colunasA.find(c => Math.abs(c.refX - it.x) < avgH * 2);
+                if (col) {
+                    if (Math.abs(it.y - containerY) < Math.abs(col.best.y - containerY)) col.best = it;
+                } else {
+                    colunasA.push({ refX: it.x, best: it });
+                }
+            });
+            const datasLinha = colunasA.map(c => toISO(c.best.raw)).filter(Boolean);
             if (datasLinha.length >= 3) return makeResult(datasLinha);
 
             // Estratégia B: datas logo após o container na ordem de leitura
@@ -4563,6 +4597,89 @@
                 if (datasColunas.length >= 3) return makeResult(datasColunas);
             }
 
+            return null;
+        }
+
+        // Extrai datas únicas do texto OCR e ordena cronologicamente.
+        // Normaliza anos com erro OCR (ex: "2006" → "2026" quando dígito "2" foi lido como "0").
+        // Detecta qual data aparece em 2 colunas (ex: registroDi = liberacaoCanal) pela frequência.
+        function extrairDatasImagemCronologica(text) {
+            if (!text) return [];
+            const datePat = /(\d{2})\/(\d{2})\/(\d{4})/g;
+            const anoAtual = new Date().getFullYear();
+
+            // Corrige anos improváveis por troca de 1 dígito (ex: 2006→2026 por confusão de "2"↔"0")
+            function normalizarAno(iso) {
+                const ano = parseInt(iso.substring(0, 4));
+                if (ano >= anoAtual - 2 && ano <= anoAtual + 3) return iso; // já razoável
+                const yrStr = String(ano).padStart(4, '0');
+                for (let pos = 0; pos < 4; pos++) {
+                    for (let d = 0; d <= 9; d++) {
+                        if (String(d) === yrStr[pos]) continue;
+                        const cand = parseInt(yrStr.slice(0, pos) + d + yrStr.slice(pos + 1));
+                        if (cand >= anoAtual - 2 && cand <= anoAtual + 3) {
+                            return String(cand) + iso.substring(4);
+                        }
+                    }
+                }
+                return iso;
+            }
+
+            // Conta ocorrências normalizando anos com erro
+            const contagens = new Map();
+            for (const m of text.matchAll(datePat)) {
+                let iso = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+                iso = normalizarAno(iso);
+                contagens.set(iso, (contagens.get(iso) || 0) + 1);
+            }
+            if (contagens.size < 2) return [];
+
+            // Datas únicas em ordem cronológica
+            const unicas = [...contagens.keys()].sort();
+            if (unicas.length >= 5) return unicas.slice(0, 5);
+
+            // Data que aparece ≥ 1.5× a mediana de ocorrências está em 2 colunas → duplicar
+            const counts = [...contagens.values()].sort((a, b) => a - b);
+            const mediana = counts[Math.floor(counts.length / 2)];
+
+            const resultado = [];
+            for (const data of unicas) {
+                resultado.push(data);
+                if (contagens.get(data) >= mediana * 1.5) resultado.push(data);
+                if (resultado.length >= 5) break;
+            }
+            return resultado.slice(0, 5);
+        }
+
+        // Busca container e datas no texto bruto do OCR (mais confiável que bounding boxes).
+        // Tenta janelas de 1, 2 e 3 linhas para cobrir quebras de linha do OCR.
+        function textoBuscarContainerEDatas(text, containerNum) {
+            if (!text || !containerNum) return null;
+            const datePat = /(\d{2})\/(\d{2})\/(\d{4})/g;
+            const normOCR = s => s.toUpperCase().replace(/[^A-Z0-9]/g, '')
+                .replace(/[O0Q]/g, '0').replace(/[I1L]/g, '1').replace(/[Z2]/g, 'Z')
+                .replace(/[S5B8]/g, 'S').replace(/[G6]/g, 'G');
+            const normAlvo = normOCR(containerNum);
+            const linhas = text.split(/\n+/);
+
+            for (let janela = 1; janela <= 3; janela++) {
+                for (let i = 0; i <= linhas.length - janela; i++) {
+                    const bloco = linhas.slice(i, i + janela).join(' ');
+                    if (!normOCR(bloco).includes(normAlvo)) continue;
+                    const datas = [...bloco.matchAll(datePat)].map(m => `${m[3]}-${m[2]}-${m[1]}`);
+                    if (datas.length >= 3) {
+                        return {
+                            container:           containerNum,
+                            refTbx:              '',
+                            chegadaNavio:        datas[0] || '',
+                            registroDi:          datas[1] || '',
+                            liberacaoCanal:      datas[2] || '',
+                            vencimentoPorto:     datas[3] || '',
+                            vencimentoDemurrage: datas[4] || '',
+                        };
+                    }
+                }
+            }
             return null;
         }
 
@@ -4632,21 +4749,48 @@
                         if (m.status === 'recognizing text') {
                             setStatus(`⏳ OCR: ${Math.round((m.progress || 0) * 100)}%`);
                         }
-                    }
+                    },
+                    // PSM 11 (sparse text): busca texto disperso na imagem — ideal para tabelas Excel
+                    // onde as células são isoladas e o OCR automático pode ignorar células da borda
+                    tessedit_pageseg_mode: '11',
                 });
 
                 const words = result.data.words || [];
+                const ocrText = result.data.text || '';
                 const contAtual = (document.getElementById('container').value || '').replace(/\s/g, '').toUpperCase();
                 let dados = [];
 
-                // Estratégia 1: busca direta pelo número já selecionado no formulário
+                // Estratégia 1: bounding boxes — localiza container pela posição e coleta datas vizinhas
                 if (contAtual && words.length > 0) {
                     const match = buscarContainerPorNumero(words, contAtual);
                     if (match) dados = [match];
                 }
 
-                // Estratégia 1.5: container selecionado mas OCR não encontrou o número na imagem
-                // → extrai datas por clustering de colunas X (em follow-ups, todas as linhas têm as mesmas datas)
+                // Estratégia 2: texto bruto — procura o container na linha do OCR e extrai datas da mesma linha
+                if (dados.length === 0 && contAtual) {
+                    const match = textoBuscarContainerEDatas(ocrText, contAtual);
+                    if (match) dados = [match];
+                }
+
+                // Estratégia 3 (definitiva): extrai todas as datas únicas do texto e ordena cronologicamente.
+                // Funciona mesmo quando OCR lê coluna por coluna, pois busca todas as datas do arquivo.
+                // Detecta datas duplicadas (registroDi = liberacaoCanal) pela frequência no texto.
+                if (dados.length === 0 && contAtual) {
+                    const datas = extrairDatasImagemCronologica(ocrText);
+                    if (datas.length >= 3) {
+                        dados = [{
+                            container:           contAtual,
+                            refTbx:              '',
+                            chegadaNavio:        datas[0] || '',
+                            registroDi:          datas[1] || '',
+                            liberacaoCanal:      datas[2] || '',
+                            vencimentoPorto:     datas[3] || '',
+                            vencimentoDemurrage: datas[4] || '',
+                        }];
+                    }
+                }
+
+                // Estratégia 4: clustering de colunas X (fallback de posicionamento)
                 if (dados.length === 0 && contAtual && words.length > 0) {
                     const datasImg = extrairDatasImagemPorColunas(words);
                     if (datasImg.length >= 3) {
@@ -4662,14 +4806,14 @@
                     }
                 }
 
-                // Estratégia 2: detecção genérica por bounding boxes
+                // Estratégia 5: detecção genérica por bounding boxes
                 if (dados.length === 0 && words.length > 0) {
                     dados = parsearWordsImagem(words);
                 }
 
-                // Estratégia 3: parsing por texto puro (último recurso)
+                // Estratégia 6: parsing por texto puro (último recurso)
                 if (dados.length === 0) {
-                    dados = parsearTextoOCR(result.data.text || '');
+                    dados = parsearTextoOCR(ocrText);
                 }
 
                 setStatus('');
