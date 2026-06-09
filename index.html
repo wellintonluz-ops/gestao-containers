@@ -6,6 +6,8 @@
     <title>Gestão de Recebimento de Container</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -1116,6 +1118,14 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 style="color: #007acc; margin: 0;">Programação de Container</h2>
                     <button onclick="fecharModalRegistro()" style="background: #ef5350; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 16px;">✖ Fechar</button>
+                </div>
+
+                <!-- Importação de arquivo -->
+                <div style="margin-bottom: 18px; padding: 12px 16px; background: #1e1e1e; border-radius: 8px; border: 1px dashed #007acc; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <span style="color: #9cdcfe; font-size: 13px; font-weight: 500;">📋 Importar dados do Follow-up:</span>
+                    <button type="button" onclick="abrirImportacaoContainer()" style="background: #007acc; color: white; border: none; padding: 7px 18px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;">📂 Importar Excel / PDF / Imagem</button>
+                    <input type="file" id="importarContainerInput" accept=".xlsx,.xls,.csv,.pdf,.png,.jpg,.jpeg" style="display: none;">
+                    <span id="importacaoStatus" style="font-size: 12px;"></span>
                 </div>
 
                 <form id="containerForm" class="form-section" style="margin: 0;">
@@ -3900,6 +3910,765 @@
 
         // Atualizar tabela ao carregar
         window.addEventListener('DOMContentLoaded', atualizarTabelaParametrosPallet);
+
+        // ===== IMPORTAÇÃO DE ARQUIVO - PROGRAMAÇÃO DE CONTAINER =====
+
+        function abrirImportacaoContainer() {
+            const input = document.getElementById('importarContainerInput');
+            if (input) { input.value = ''; input.click(); }
+        }
+
+        // Converte qualquer representação de data para formato YYYY-MM-DD (HTML date input)
+        function converterDataParaInput(valor) {
+            if (!valor) return '';
+            if (valor instanceof Date) {
+                if (isNaN(valor.getTime())) return '';
+                const y = valor.getFullYear();
+                const m = String(valor.getMonth() + 1).padStart(2, '0');
+                const d = String(valor.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+            const s = String(valor).trim();
+            if (!s) return '';
+            // Já no formato YYYY-MM-DD
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+            // Formato DD/MM/YYYY
+            const mBR = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+            if (mBR) {
+                const d = mBR[1].padStart(2, '0');
+                const mo = mBR[2].padStart(2, '0');
+                let y = mBR[3];
+                if (y.length === 2) y = '20' + y;
+                return `${y}-${mo}-${d}`;
+            }
+            // Número serial do Excel (dias desde 1900)
+            const num = parseFloat(s);
+            if (!isNaN(num) && num > 40000 && num < 60000) {
+                const dt = new Date((num - 25569) * 86400 * 1000);
+                if (!isNaN(dt.getTime())) return dt.toISOString().substring(0, 10);
+            }
+            return '';
+        }
+
+        function processarExcelContainer(file) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                try {
+                    const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: true });
+                    const sheet = wb.Sheets[wb.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+
+                    // Normalização interna para busca de headers
+                    const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+                    const findCol = (terms) => {
+                        for (let i = 0; i < headers.length; i++) {
+                            const h = norm(headers[i]);
+                            if (terms.some(t => h.includes(t))) return i;
+                        }
+                        return -1;
+                    };
+
+                    // Localizar linha de cabeçalho
+                    let headerIdx = -1;
+                    for (let i = 0; i < Math.min(rows.length, 25); i++) {
+                        const txt = rows[i].map(c => norm(c)).join('|');
+                        if (txt.includes('container') || (txt.includes('navio') && txt.includes('entrada'))) {
+                            headerIdx = i; break;
+                        }
+                    }
+                    if (headerIdx === -1) {
+                        alert('❌ Cabeçalho não encontrado. Verifique se o arquivo possui colunas como "CONTAINER" e "ENTRADA PORTO".');
+                        return;
+                    }
+
+                    const headers = rows[headerIdx];
+                    const dataRows = rows.slice(headerIdx + 1);
+
+                    const idxCont     = findCol(['container', 'n container', 'no container', 'n° container']);
+                    const idxEntrada  = findCol(['entrada porto', 'chegada porto', 'chegada navio', 'chegada do navio']);
+                    const idxReg      = findCol(['data de registro', 'data registro', 'registro di', 'data do registro']);
+                    const idxLib      = findCol(['liberacao rf', 'liberação rf', 'liberacao rif', 'liberação rif',
+                                                 'data de liberacao rf', 'data de liberação rf',
+                                                 'data de liberacao rif', 'data de liberação rif',
+                                                 'liberacao canal', 'liberação canal']);
+                    const idxVPorto   = findCol(['vencimento free time armaz porto', 'vencimento free time armaz. porto',
+                                                 'vencimento armazenagem porto', 'venc armaz porto', 'vencimento porto',
+                                                 'venc. armaz. porto ioa', 'vencimento free time armaz. porto ioa']);
+                    const idxVArmad   = findCol(['vencimento free time armador', 'vencimento armador',
+                                                 'venc armador', 'vencimento demurrage', 'demurrage']);
+                    const idxRefTbx   = findCol(['ref tbx', 'ref. tbx', 'reftbx', 'referencia tbx', 'referência tbx',
+                                                 'lote tbx', 'po tbx', 'numero po', 'número po', 'ref lote']);
+
+                    const dados = [];
+                    dataRows.forEach(row => {
+                        if (idxCont < 0) return;
+                        const cont = String(row[idxCont] || '').replace(/\s/g, '').toUpperCase();
+                        if (cont.length < 4) return;
+                        dados.push({
+                            container:        cont,
+                            refTbx:           idxRefTbx >= 0 ? String(row[idxRefTbx] || '').trim() : '',
+                            chegadaNavio:     idxEntrada >= 0 ? converterDataParaInput(row[idxEntrada]) : '',
+                            registroDi:       idxReg    >= 0 ? converterDataParaInput(row[idxReg])    : '',
+                            liberacaoCanal:   idxLib    >= 0 ? converterDataParaInput(row[idxLib])    : '',
+                            vencimentoPorto:  idxVPorto >= 0 ? converterDataParaInput(row[idxVPorto]) : '',
+                            vencimentoDemurrage: idxVArmad >= 0 ? converterDataParaInput(row[idxVArmad]) : '',
+                        });
+                    });
+
+                    if (dados.length === 0) {
+                        alert('❌ Nenhum container encontrado. Verifique se a coluna CONTAINER está preenchida.');
+                        return;
+                    }
+                    selecionarEAplicarContainer(dados);
+                } catch (err) {
+                    console.error(err);
+                    alert('❌ Erro ao processar Excel: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function processarPDFContainer(file) {
+            const statusEl = document.getElementById('importacaoStatus');
+            const setStatus = (msg, cor) => {
+                if (statusEl) { statusEl.textContent = msg; statusEl.style.color = cor || '#858585'; }
+            };
+            setStatus('⏳ Lendo PDF...');
+            try {
+                pdfjsLib.GlobalWorkerOptions.workerSrc =
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+                const arrayBuffer = await file.arrayBuffer();
+                const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const allItems = [];
+
+                for (let p = 1; p <= pdfDoc.numPages; p++) {
+                    const page = await pdfDoc.getPage(p);
+                    const tc = await page.getTextContent();
+                    const vp = page.getViewport({ scale: 1.0 });
+                    tc.items.forEach(item => {
+                        const txt = item.str ? item.str.trim() : '';
+                        if (txt) {
+                            allItems.push({
+                                text: txt,
+                                x: item.transform[4],
+                                y: vp.height - item.transform[5],
+                                page: p
+                            });
+                        }
+                    });
+                }
+
+                const dados = parsearItensPDF(allItems);
+                setStatus('');
+                if (dados.length === 0) {
+                    alert('❌ Não foi possível extrair containers do PDF.\nVerifique se o PDF possui o formato de tabela esperado (colunas: CONTAINER, ENTRADA PORTO, DATA REGISTRO, etc.).');
+                    return;
+                }
+                selecionarEAplicarContainer(dados);
+            } catch (err) {
+                console.error(err);
+                setStatus('');
+                alert('❌ Erro ao processar PDF: ' + err.message);
+            }
+        }
+
+        function parsearItensPDF(allItems) {
+            // Padrão: 4 letras maiúsculas + 7 dígitos (ex: TRHU7180069)
+            const contPat = /^[A-Z]{4}\d{7}$/;
+            // Padrão de data BR: DD/MM/YYYY
+            const datePat = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+
+            const containerItems = allItems.filter(it =>
+                contPat.test(it.text.replace(/\s/g, '').toUpperCase())
+            );
+            if (containerItems.length === 0) return [];
+
+            return containerItems.map(cItem => {
+                // Busca datas na mesma faixa de Y (±18px) e à direita do container
+                const datas = allItems
+                    .filter(it => {
+                        if (!datePat.test(it.text.trim())) return false;
+                        if (it.page !== cItem.page) return false;
+                        if (Math.abs(it.y - cItem.y) > 18) return false;
+                        if (it.x <= cItem.x - 15) return false; // só à direita
+                        return true;
+                    })
+                    .sort((a, b) => a.x - b.x); // ordena da esquerda para direita
+
+                // REF.TBX: item numérico (≥6 dígitos) mais próximo à ESQUERDA do container
+                const refTbxItem = allItems
+                    .filter(it => {
+                        if (it.page !== cItem.page) return false;
+                        if (Math.abs(it.y - cItem.y) > 18) return false;
+                        if (it.x >= cItem.x) return false; // apenas à esquerda
+                        return /^\d{6,}$/.test(it.text.replace(/\s/g, ''));
+                    })
+                    .sort((a, b) => b.x - a.x)[0]; // mais próximo ao container
+
+                // Ordem das colunas no PDF:
+                // [0] ENTRADA PORTO → chegadaNavio
+                // [1] Data de Registro → registroDi
+                // [2] Data de Liberação RF → liberacaoCanal
+                // (entre [2] e [3]: número FREE TIME, não é data — pulado automaticamente pelo filtro)
+                // [3] VENCIMENTO FREE TIME ARMAZ PORTO → vencimentoPorto
+                // (entre [3] e [4]: número FREE TIME ARMADOR — pulado)
+                // [4] VENCIMENTO FREE TIME ARMADOR → vencimentoDemurrage
+                return {
+                    container:           cItem.text.replace(/\s/g, '').toUpperCase(),
+                    refTbx:              refTbxItem ? refTbxItem.text.trim() : '',
+                    chegadaNavio:        datas[0] ? converterDataPDF(datas[0].text) : '',
+                    registroDi:          datas[1] ? converterDataPDF(datas[1].text) : '',
+                    liberacaoCanal:      datas[2] ? converterDataPDF(datas[2].text) : '',
+                    vencimentoPorto:     datas[3] ? converterDataPDF(datas[3].text) : '',
+                    vencimentoDemurrage: datas[4] ? converterDataPDF(datas[4].text) : '',
+                };
+            }).filter(d =>
+                d.chegadaNavio || d.registroDi || d.vencimentoPorto || d.vencimentoDemurrage
+            );
+        }
+
+        function converterDataPDF(texto) {
+            const m = texto.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+            return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+        }
+
+        function selecionarEAplicarContainer(dados) {
+            if (!dados || dados.length === 0) { alert('❌ Nenhum container encontrado no arquivo.'); return; }
+
+            const contAtual   = (document.getElementById('container').value  || '').replace(/\s/g, '').toUpperCase();
+            const refTbxAtual = (document.getElementById('refTbx').value || '').trim();
+
+            if (contAtual) {
+                const match = dados.find(d => d.container === contAtual);
+                if (match) {
+                    // Container encontrado: exibe confirmação com dados para revisão antes de aplicar
+                    mostrarConfirmacaoImportacao(match, contAtual, refTbxAtual);
+                    return;
+                }
+                // Container NÃO encontrado: alerta específico com lista dos disponíveis
+                const listaDisp = dados.slice(0, 10).map(d => {
+                    const lote = d.refTbx ? ` (Lote: ${d.refTbx})` : '';
+                    return `  • ${d.container}${lote}`;
+                }).join('\n') + (dados.length > 10 ? `\n  ... e mais ${dados.length - 10}` : '');
+
+                const msg =
+                    `⚠️ Container não encontrado no arquivo!\n\n` +
+                    `Esperado: ${contAtual}${refTbxAtual ? `  (Lote: ${refTbxAtual})` : ''}\n\n` +
+                    `Containers disponíveis no arquivo:\n${listaDisp}\n\n` +
+                    `Deseja selecionar um deles manualmente?`;
+
+                if (confirm(msg)) mostrarModalSelecaoContainer(dados);
+                return;
+            }
+
+            // Nenhum container selecionado no formulário: exibe lista para escolha
+            mostrarModalSelecaoContainer(dados);
+        }
+
+        function mostrarConfirmacaoImportacao(dados, contAtual, refTbxAtual) {
+            const antigo = document.getElementById('modalConfirmacaoImport');
+            if (antigo) antigo.remove();
+            window._dadosConfirmImport = dados;
+
+            const fmtDt = d => {
+                if (!d) return '-';
+                const p = d.split('-');
+                return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+            };
+
+            // Detecta divergência de lote entre formulário e arquivo
+            const refArq = (dados.refTbx || '').trim();
+            const divergeLote = refArq && refTbxAtual && refArq !== refTbxAtual;
+            const alertaLote = divergeLote
+                ? `<div style="background:#3a2000;border:1px solid #ff9800;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:flex-start;gap:8px;">
+                    <span style="font-size:18px;flex-shrink:0;">⚠️</span>
+                    <div style="color:#ffb74d;font-size:12px;line-height:1.6;">
+                        <b>Divergência de Lote detectada!</b><br>
+                        Formulário: <b style="color:#fff">${refTbxAtual}</b>
+                        &nbsp;→&nbsp;
+                        Arquivo: <b style="color:#fff">${refArq}</b>
+                    </div>
+                   </div>`
+                : '';
+
+            const linhasDados = [
+                { label: 'Entrada Porto / Chegada do Navio', val: dados.chegadaNavio },
+                { label: 'Data de Registro DI',              val: dados.registroDi },
+                { label: 'Data de Liberação no Canal', val: dados.liberacaoCanal },
+                { label: 'Venc. Armazenagem Porto',          val: dados.vencimentoPorto },
+                { label: 'Vencimento Demurrage',             val: dados.vencimentoDemurrage },
+            ].filter(l => l.val);
+
+            const overlay = document.createElement('div');
+            overlay.id = 'modalConfirmacaoImport';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:2000;display:flex;align-items:center;justify-content:center;';
+
+            overlay.innerHTML = `
+            <div style="background:#252526;border-radius:12px;padding:26px;border:1px solid #3e3e42;max-width:520px;width:92%;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+                    <span style="font-size:26px;">&#128269;</span>
+                    <div>
+                        <h3 style="color:#4caf50;margin:0;font-size:16px;">Container encontrado no arquivo!</h3>
+                        <div style="color:#858585;font-size:12px;margin-top:2px;">Revise os dados antes de confirmar</div>
+                    </div>
+                </div>
+
+                <div style="background:#1e1e1e;border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                    <div>
+                        <div style="color:#9cdcfe;font-weight:bold;font-size:15px;">${contAtual}</div>
+                        ${refTbxAtual ? `<div style="color:#858585;font-size:11px;margin-top:3px;">Lote (formulário): <b style="color:#aaa">${refTbxAtual}</b></div>` : ''}
+                        ${refArq && !divergeLote ? `<div style="color:#858585;font-size:11px;">Lote (arquivo): <b style="color:#4caf50">${refArq}</b> ✔</div>` : ''}
+                    </div>
+                    <span style="background:#1a3a1a;color:#4caf50;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:bold;white-space:nowrap;">✔ ENCONTRADO</span>
+                </div>
+
+                ${alertaLote}
+
+                <p style="color:#aaa;font-size:12px;margin-bottom:10px;font-weight:500;">Dados que serão preenchidos no formulário:</p>
+                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:20px;">
+                    ${linhasDados.map(l => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;background:#1e1e1e;padding:8px 12px;border-radius:6px;">
+                        <span style="color:#858585;font-size:11px;">${l.label}</span>
+                        <span style="color:#dcdcaa;font-weight:bold;font-size:12px;">${fmtDt(l.val)}</span>
+                    </div>`).join('')}
+                    ${linhasDados.length === 0 ? '<div style="color:#858585;font-size:12px;text-align:center;padding:10px;">Nenhuma data encontrada para este container.</div>' : ''}
+                </div>
+
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button onclick="document.getElementById('modalConfirmacaoImport').remove()"
+                        style="background:#3e3e42;color:#ccc;border:none;padding:9px 20px;border-radius:6px;cursor:pointer;font-size:13px;">
+                        Cancelar
+                    </button>
+                    <button onclick="(function(){document.getElementById('modalConfirmacaoImport').remove();aplicarDadosImportados(window._dadosConfirmImport);})()"
+                        style="background:#007acc;color:white;border:none;padding:9px 22px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold;">
+                        ✔ Confirmar Importação
+                    </button>
+                </div>
+            </div>`;
+
+            document.body.appendChild(overlay);
+        }
+
+        function mostrarModalSelecaoContainer(dados) {
+            const antigo = document.getElementById('modalSelecaoContainer');
+            if (antigo) antigo.remove();
+            window._dadosImportContainer = dados;
+
+            const fmtDt = d => {
+                if (!d) return '-';
+                const p = d.split('-');
+                return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+            };
+
+            const overlay = document.createElement('div');
+            overlay.id = 'modalSelecaoContainer';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:2000;display:flex;align-items:center;justify-content:center;overflow-y:auto;';
+
+            let html = `
+            <div style="background:#252526;border-radius:12px;padding:24px;border:1px solid #3e3e42;max-width:660px;width:92%;max-height:82vh;overflow-y:auto;margin:20px auto;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                    <h3 style="color:#007acc;margin:0;">Selecionar Container para Importar</h3>
+                    <button onclick="document.getElementById('modalSelecaoContainer').remove()"
+                        style="background:#ef5350;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:14px;">✖ Fechar</button>
+                </div>
+                <p style="color:#858585;font-size:13px;margin-bottom:14px;">
+                    ${dados.length} container(s) encontrado(s). Clique em um para preencher o formulário:
+                </p>
+                <div style="display:flex;flex-direction:column;gap:8px;">`;
+
+            dados.forEach((d, i) => {
+                html += `
+                <div onclick="(function(){document.getElementById('modalSelecaoContainer').remove();aplicarDadosImportados(window._dadosImportContainer[${i}]);})()"
+                    style="background:#1e1e1e;border:1px solid #3e3e42;border-radius:8px;padding:12px 14px;cursor:pointer;"
+                    onmouseover="this.style.borderColor='#007acc';this.style.background='#1a2a3a'"
+                    onmouseout="this.style.borderColor='#3e3e42';this.style.background='#1e1e1e'">
+                    <div style="color:#9cdcfe;font-weight:bold;font-size:14px;margin-bottom:6px;">${d.container}</div>
+                    <div style="color:#858585;font-size:11px;display:flex;flex-wrap:wrap;gap:12px;">
+                        ${d.chegadaNavio     ? `<span>Entrada Porto: <b style="color:#dcdcaa">${fmtDt(d.chegadaNavio)}</b></span>` : ''}
+                        ${d.registroDi       ? `<span>Registro DI: <b style="color:#dcdcaa">${fmtDt(d.registroDi)}</b></span>` : ''}
+                        ${d.liberacaoCanal   ? `<span>Liberação Canal: <b style="color:#dcdcaa">${fmtDt(d.liberacaoCanal)}</b></span>` : ''}
+                        ${d.vencimentoPorto  ? `<span>Venc. Porto: <b style="color:#ce9178">${fmtDt(d.vencimentoPorto)}</b></span>` : ''}
+                        ${d.vencimentoDemurrage ? `<span>Venc. Demurrage: <b style="color:#ce9178">${fmtDt(d.vencimentoDemurrage)}</b></span>` : ''}
+                    </div>
+                </div>`;
+            });
+
+            html += '</div></div>';
+            overlay.innerHTML = html;
+            document.body.appendChild(overlay);
+        }
+
+        function aplicarDadosImportados(dados) {
+            if (dados.chegadaNavio)     document.getElementById('chegadaNavio').value     = dados.chegadaNavio;
+            if (dados.registroDi)       document.getElementById('registroDi').value       = dados.registroDi;
+            if (dados.liberacaoCanal)   document.getElementById('liberacaoCanal').value   = dados.liberacaoCanal;
+            if (dados.vencimentoPorto)  document.getElementById('vencimentoPorto').value  = dados.vencimentoPorto;
+            if (dados.vencimentoDemurrage) document.getElementById('vencimentoDemurrage').value = dados.vencimentoDemurrage;
+            // Preenche número do container se campo estiver vazio
+            if (dados.container && !document.getElementById('container').value.trim()) {
+                document.getElementById('container').value = dados.container;
+            }
+            const statusEl = document.getElementById('importacaoStatus');
+            if (statusEl) {
+                statusEl.textContent = `✅ Dados de ${dados.container} importados!`;
+                statusEl.style.color = '#4caf50';
+                setTimeout(() => { if (statusEl) { statusEl.textContent = ''; statusEl.style.color = ''; } }, 5000);
+            }
+        }
+
+        // Escala a imagem para melhorar a qualidade do OCR (mínimo 2400px de largura)
+        async function preprocessarImagemOCR(file) {
+            return new Promise(resolve => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    try {
+                        const scale = Math.max(1, Math.min(4, 2400 / img.width));
+                        const canvas = document.createElement('canvas');
+                        canvas.width  = Math.round(img.width  * scale);
+                        canvas.height = Math.round(img.height * scale);
+                        const ctx = canvas.getContext('2d');
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        URL.revokeObjectURL(url);
+                        canvas.toBlob(b => resolve(b || file), 'image/png');
+                    } catch (e) {
+                        URL.revokeObjectURL(url);
+                        resolve(file);
+                    }
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+                img.src = url;
+            });
+        }
+
+        // Usa coordenadas de palavras (bounding boxes) — igual à lógica do PDF.js
+        function parsearWordsImagem(words) {
+            const datePat = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+
+            const items = words
+                .filter(w => w.text && w.text.trim())
+                .map(w => ({
+                    text: w.text.trim().replace(/[|\\[\]{}@#$%^&*]/g, ''),
+                    x: (w.bbox.x0 + w.bbox.x1) / 2,
+                    y: (w.bbox.y0 + w.bbox.y1) / 2,
+                    h: Math.max(1, w.bbox.y1 - w.bbox.y0), // altura real da palavra
+                }))
+                .filter(it => it.text.length > 0);
+
+            if (items.length === 0) return [];
+
+            // Tolerância Y dinâmica: altura média das palavras × 1.8
+            // Garante captura mesmo quando texto e datas não estão perfeitamente alinhados
+            const avgH = items.reduce((s, it) => s + it.h, 0) / items.length;
+            const yTol = Math.max(30, Math.min(120, avgH * 1.8));
+
+            // Ordena por Y, depois X — sort estável para processamento em ordem visual
+            items.sort((a, b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
+
+            // Monta grupos de itens por linha (faixa Y próxima)
+            const linhasOCR = [];
+            items.forEach(it => {
+                const ultima = linhasOCR[linhasOCR.length - 1];
+                if (ultima && Math.abs(it.y - ultima.refY) <= yTol / 2) {
+                    ultima.items.push(it);
+                } else {
+                    linhasOCR.push({ refY: it.y, items: [it] });
+                }
+            });
+
+            // Localiza containers — busca dentro de cada linha e em linhas adjacentes
+            const containerItems = [];
+            const vistos = new Set();
+
+            linhasOCR.forEach(linha => {
+                const textoLinha = linha.items.map(it => it.text.replace(/\s/g, '').toUpperCase()).join('');
+
+                // Tenta encontrar container completo concatenando tokens da linha
+                // (trata: "MSBU5439540", "MSBU" + "5439540", "MSB" + "U5439540", etc.)
+                let pos = 0;
+                const tokens = linha.items.map(it => ({ ...it, clean: it.text.replace(/\s/g, '').toUpperCase() }));
+
+                for (let i = 0; i < tokens.length; i++) {
+                    // Acumula tokens até formar 11 chars alfanuméricos
+                    let acum = '';
+                    let xStart = tokens[i].x;
+                    for (let j = i; j < tokens.length && acum.replace(/[^A-Z0-9]/g, '').length < 11; j++) {
+                        acum += tokens[j].clean;
+                        const candidato = acum.replace(/[^A-Z0-9]/g, '');
+                        if (/^[A-Z]{4}\d{7}$/.test(candidato) && !vistos.has(candidato)) {
+                            vistos.add(candidato);
+                            containerItems.push({ text: candidato, x: xStart, y: linha.refY });
+                            break;
+                        }
+                        if (candidato.length > 11) break;
+                    }
+                }
+            });
+
+            if (containerItems.length === 0) return [];
+
+            return containerItems.map(cItem => {
+                // Datas à direita do container na mesma faixa de Y (tolerância dinâmica)
+                const datas = items
+                    .filter(it =>
+                        datePat.test(it.text) &&
+                        Math.abs(it.y - cItem.y) <= yTol &&
+                        it.x > cItem.x - 30
+                    )
+                    .sort((a, b) => a.x - b.x);
+
+                if (datas.length === 0) return null;
+
+                // REF.TBX: número longo à esquerda do container (tolerância dinâmica)
+                const refItem = items
+                    .filter(it =>
+                        Math.abs(it.y - cItem.y) <= yTol &&
+                        it.x < cItem.x &&
+                        /^\d{6,}$/.test(it.text.replace(/[^0-9]/g, ''))
+                    )
+                    .sort((a, b) => b.x - a.x)[0];
+
+                return {
+                    container:           cItem.text,
+                    refTbx:              refItem ? refItem.text.replace(/[^0-9]/g, '') : '',
+                    chegadaNavio:        datas[0] ? converterDataPDF(datas[0].text) : '',
+                    registroDi:          datas[1] ? converterDataPDF(datas[1].text) : '',
+                    liberacaoCanal:      datas[2] ? converterDataPDF(datas[2].text) : '',
+                    vencimentoPorto:     datas[3] ? converterDataPDF(datas[3].text) : '',
+                    vencimentoDemurrage: datas[4] ? converterDataPDF(datas[4].text) : '',
+                };
+            }).filter(d => d && (d.chegadaNavio || d.registroDi || d.vencimentoPorto || d.vencimentoDemurrage));
+        }
+
+        // Busca o container pelo número exato (já conhecido do formulário), com tolerância a erros de OCR.
+        // Normaliza confusões comuns: O↔0, I/l↔1, S↔5, B↔8, G↔6, Z↔2.
+        function buscarContainerPorNumero(words, containerNum) {
+            if (!words || words.length === 0 || !containerNum) return null;
+
+            const normOCR = s => s.toUpperCase()
+                .replace(/[^A-Z0-9]/g, '')
+                .replace(/O|Q/g, '0')
+                .replace(/I|L/g, '1')
+                .replace(/Z/g, '2')
+                .replace(/S/g, '5')
+                .replace(/G/g, '6')
+                .replace(/B/g, '8');
+
+            const normAlvo = normOCR(containerNum);
+
+            // Constrói items ordenados por leitura (Y depois X)
+            const items = words
+                .filter(w => w.text && w.text.trim())
+                .map(w => ({
+                    raw: w.text.trim(),
+                    norm: normOCR(w.text),
+                    x: (w.bbox.x0 + w.bbox.x1) / 2,
+                    y: (w.bbox.y0 + w.bbox.y1) / 2,
+                    h: w.bbox.y1 - w.bbox.y0,
+                }))
+                .filter(it => it.raw.length > 0)
+                .sort((a, b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
+
+            if (items.length === 0) return null;
+
+            // Concatena texto normalizado de todos os items para localizar o container
+            let concatNorm = '';
+            const mapa = []; // posição no concat → índice do item
+            items.forEach((it, idx) => {
+                mapa.push({ start: concatNorm.length, idx });
+                concatNorm += it.norm;
+            });
+
+            const pos = concatNorm.indexOf(normAlvo);
+            if (pos === -1) return null;
+
+            // Encontra qual item contém a posição do container
+            let containerItemIdx = 0;
+            for (const m of mapa) {
+                if (m.start <= pos) containerItemIdx = m.idx;
+                else break;
+            }
+
+            // Coleta até 5 datas após o container na ordem de leitura
+            const datePat = /(\d{2})\/(\d{2})\/(\d{4})/;
+            const datasDepois = [];
+            for (let i = containerItemIdx + 1; i < items.length && datasDepois.length < 5; i++) {
+                const m = items[i].raw.match(datePat);
+                if (m) datasDepois.push(`${m[3]}-${m[2]}-${m[1]}`);
+            }
+
+            // Fallback: se datas não encontradas após container (PSM lê coluna por coluna),
+            // usa todas as datas da imagem — válido quando todas as linhas têm as mesmas datas
+            if (datasDepois.length < 3) {
+                const todasDatas = items
+                    .filter(it => datePat.test(it.raw))
+                    .map(it => { const m = it.raw.match(datePat); return m ? `${m[3]}-${m[2]}-${m[1]}` : null; })
+                    .filter(Boolean);
+                if (todasDatas.length >= 3) datasDepois.push(...todasDatas.slice(0, 5));
+            }
+
+            if (datasDepois.length === 0) return null;
+
+            return {
+                container:           containerNum,
+                refTbx:              '',
+                chegadaNavio:        datasDepois[0] || '',
+                registroDi:          datasDepois[1] || '',
+                liberacaoCanal:      datasDepois[2] || '',
+                vencimentoPorto:     datasDepois[3] || '',
+                vencimentoDemurrage: datasDepois[4] || '',
+            };
+        }
+
+        async function processarImagemContainer(file) {
+            const statusEl = document.getElementById('importacaoStatus');
+            const setStatus = (msg, cor) => {
+                if (statusEl) { statusEl.textContent = msg; statusEl.style.color = cor || '#858585'; }
+            };
+            setStatus('⏳ Preparando imagem...');
+            try {
+                const imgBlob = await preprocessarImagemOCR(file);
+                setStatus('⏳ Iniciando OCR...');
+
+                const result = await Tesseract.recognize(imgBlob, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            setStatus(`⏳ OCR: ${Math.round((m.progress || 0) * 100)}%`);
+                        }
+                    }
+                });
+
+                const words = result.data.words || [];
+                const contAtual = (document.getElementById('container').value || '').replace(/\s/g, '').toUpperCase();
+                let dados = [];
+
+                // Estratégia 1 (mais confiável): busca direta pelo número já selecionado no formulário
+                if (contAtual && words.length > 0) {
+                    const match = buscarContainerPorNumero(words, contAtual);
+                    if (match) dados = [match];
+                }
+
+                // Estratégia 2: detecção genérica por bounding boxes
+                if (dados.length === 0 && words.length > 0) {
+                    dados = parsearWordsImagem(words);
+                }
+
+                // Estratégia 3: parsing por texto puro (último recurso)
+                if (dados.length === 0) {
+                    dados = parsearTextoOCR(result.data.text || '');
+                }
+
+                setStatus('');
+                if (dados.length === 0) {
+                    alert(
+                        '❌ Nenhum container encontrado na imagem.\n\n' +
+                        'Dicas:\n' +
+                        '• Selecione o container no formulário antes de importar\n' +
+                        '• Use a imagem/screenshot original sem cortes\n' +
+                        '• Resolução mínima recomendada: 1200px de largura\n' +
+                        '• Evite imagens com zoom muito alto (bordas de células cortam o texto)'
+                    );
+                    return;
+                }
+                selecionarEAplicarContainer(dados);
+            } catch (err) {
+                console.error(err);
+                setStatus('');
+                alert('❌ Erro ao processar imagem: ' + err.message);
+            }
+        }
+
+        function parsearTextoOCR(text) {
+            // Padrão de container (OCR pode inserir espaços internos)
+            const contPat = /[A-Z]{4}[\s]?\d[\s]?\d[\s]?\d[\s]?\d[\s]?\d[\s]?\d[\s]?\d/g;
+            // Padrão de data com tolerância a espaços ao redor de / e -
+            const datePat = /(\d{2})\s*[\/\-]\s*(\d{2})\s*[\/\-]\s*(\d{4})/g;
+
+            const convData = (m) => `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+
+            const linhas = text.split(/\r?\n/);
+            const dados = [];
+            const vistos = new Set();
+
+            // Extrai REF.TBX: número longo (≥7 dígitos) imediatamente antes do container na linha
+            const extrairRefTbx = (texto, posContainer) => {
+                const antes = texto.substring(0, posContainer);
+                const m = antes.match(/(\d{7,})\s*$/);
+                return m ? m[1] : '';
+            };
+
+            // Passagem 1: procura container + datas na mesma linha
+            linhas.forEach(linha => {
+                const contMatches = [...linha.matchAll(contPat)];
+                contMatches.forEach(cm => {
+                    const container = cm[0].replace(/\s/g, '').toUpperCase();
+                    if (!/^[A-Z]{4}\d{7}$/.test(container)) return;
+                    if (vistos.has(container)) return;
+                    const datas = [...linha.matchAll(datePat)].map(m => convData(m));
+                    if (datas.length === 0) return;
+                    vistos.add(container);
+                    dados.push({
+                        container,
+                        refTbx:              extrairRefTbx(linha, cm.index),
+                        chegadaNavio:        datas[0] || '',
+                        registroDi:          datas[1] || '',
+                        liberacaoCanal:      datas[2] || '',
+                        vencimentoPorto:     datas[3] || '',
+                        vencimentoDemurrage: datas[4] || '',
+                    });
+                });
+            });
+
+            // Passagem 2 (fallback): combina linha atual + seguinte para capturar OCR quebrado
+            if (dados.length === 0) {
+                for (let i = 0; i < linhas.length; i++) {
+                    const bloco = linhas.slice(i, i + 3).join(' ');
+                    const contMatches = [...bloco.matchAll(contPat)];
+                    contMatches.forEach(cm => {
+                        const container = cm[0].replace(/\s/g, '').toUpperCase();
+                        if (!/^[A-Z]{4}\d{7}$/.test(container)) return;
+                        if (vistos.has(container)) return;
+                        const datas = [...bloco.matchAll(datePat)].map(m => convData(m));
+                        if (datas.length === 0) return;
+                        vistos.add(container);
+                        dados.push({
+                            container,
+                            refTbx:              extrairRefTbx(bloco, cm.index),
+                            chegadaNavio:        datas[0] || '',
+                            registroDi:          datas[1] || '',
+                            liberacaoCanal:      datas[2] || '',
+                            vencimentoPorto:     datas[3] || '',
+                            vencimentoDemurrage: datas[4] || '',
+                        });
+                    });
+                }
+            }
+
+            return dados;
+        }
+
+        // Listener do input de importação de containers
+        (function() {
+            const inp = document.getElementById('importarContainerInput');
+            if (!inp) return;
+            inp.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (ext === 'pdf') {
+                    processarPDFContainer(file);
+                } else if (ext === 'png' || ext === 'jpg' || ext === 'jpeg') {
+                    processarImagemContainer(file);
+                } else {
+                    processarExcelContainer(file);
+                }
+                e.target.value = '';
+            });
+        })();
+
     </script>
 </body>
 </html>
