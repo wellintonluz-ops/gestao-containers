@@ -4448,14 +4448,17 @@
         function buscarContainerPorNumero(words, containerNum) {
             if (!words || words.length === 0 || !containerNum) return null;
 
+            // Normalização tolerante a erros de OCR:
+            // Agrupa caracteres visualmente similares no mesmo símbolo canônico.
+            // {O,0,Q}→'0'  {I,1,L}→'1'  {Z,2}→'Z'  {S,5,B,8}→'S'  {G,6}→'G'
+            // Importante: S/5/B/8 ficam no mesmo grupo porque OCR confunde 8↔S (além de 5↔S e B↔8)
             const normOCR = s => s.toUpperCase()
                 .replace(/[^A-Z0-9]/g, '')
-                .replace(/O|Q/g, '0')
-                .replace(/I|L/g, '1')
-                .replace(/Z/g, '2')
-                .replace(/S/g, '5')
-                .replace(/G/g, '6')
-                .replace(/B/g, '8');
+                .replace(/[O0Q]/g, '0')
+                .replace(/[I1L]/g, '1')
+                .replace(/[Z2]/g, 'Z')
+                .replace(/[S5B8]/g, 'S')
+                .replace(/[G6]/g, 'G');
 
             const normAlvo = normOCR(containerNum);
 
@@ -4474,9 +4477,12 @@
 
             if (items.length === 0) return null;
 
+            const avgH = items.reduce((s, it) => s + it.h, 0) / items.length || 20;
+            const yTol = Math.max(30, Math.min(120, avgH * 2));
+
             // Concatena texto normalizado de todos os items para localizar o container
             let concatNorm = '';
-            const mapa = []; // posição no concat → índice do item
+            const mapa = [];
             items.forEach((it, idx) => {
                 mapa.push({ start: concatNorm.length, idx });
                 concatNorm += it.norm;
@@ -4492,35 +4498,113 @@
                 else break;
             }
 
-            // Coleta até 5 datas após o container na ordem de leitura
+            const containerY = items[containerItemIdx].y;
+            const containerX = items[containerItemIdx].x;
             const datePat = /(\d{2})\/(\d{2})\/(\d{4})/;
+
+            function toISO(raw) {
+                const m = raw.match(datePat);
+                return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+            }
+
+            function makeResult(datas) {
+                return {
+                    container:           containerNum,
+                    refTbx:              '',
+                    chegadaNavio:        datas[0] || '',
+                    registroDi:          datas[1] || '',
+                    liberacaoCanal:      datas[2] || '',
+                    vencimentoPorto:     datas[3] || '',
+                    vencimentoDemurrage: datas[4] || '',
+                };
+            }
+
+            // Estratégia A: datas na mesma faixa Y (OCR linha a linha)
+            const datasLinha = items
+                .filter(it => datePat.test(it.raw) && Math.abs(it.y - containerY) <= yTol && it.x >= containerX - 50)
+                .sort((a, b) => a.x - b.x)
+                .map(it => toISO(it.raw))
+                .filter(Boolean);
+            if (datasLinha.length >= 3) return makeResult(datasLinha);
+
+            // Estratégia B: datas logo após o container na ordem de leitura
             const datasDepois = [];
             for (let i = containerItemIdx + 1; i < items.length && datasDepois.length < 5; i++) {
-                const m = items[i].raw.match(datePat);
-                if (m) datasDepois.push(`${m[3]}-${m[2]}-${m[1]}`);
+                const v = toISO(items[i].raw);
+                if (v) datasDepois.push(v);
+            }
+            if (datasDepois.length >= 3) return makeResult(datasDepois);
+
+            // Estratégia C: clusteriza todas as datas por coluna X → uma data por coluna
+            // (OCR de planilha lê coluna inteira antes de passar para a próxima)
+            const allDateItems = items.filter(it => datePat.test(it.raw));
+            if (allDateItems.length >= 3) {
+                const xTol = avgH * 5;
+                const cols = [];
+                [...allDateItems].sort((a, b) => a.x - b.x).forEach(d => {
+                    const col = cols.find(c => Math.abs(c.avgX - d.x) < xTol);
+                    if (col) {
+                        col.items.push(d);
+                        col.avgX = col.items.reduce((s, it) => s + it.x, 0) / col.items.length;
+                    } else {
+                        cols.push({ avgX: d.x, items: [d] });
+                    }
+                });
+                cols.sort((a, b) => a.avgX - b.avgX);
+                const datasColunas = cols.slice(0, 5).map(col => {
+                    // Dentro de cada coluna, pega a data na linha mais próxima ao container
+                    const melhor = col.items.reduce((prev, curr) =>
+                        Math.abs(curr.y - containerY) < Math.abs(prev.y - containerY) ? curr : prev
+                    );
+                    return toISO(melhor.raw);
+                }).filter(Boolean);
+                if (datasColunas.length >= 3) return makeResult(datasColunas);
             }
 
-            // Fallback: se datas não encontradas após container (PSM lê coluna por coluna),
-            // usa todas as datas da imagem — válido quando todas as linhas têm as mesmas datas
-            if (datasDepois.length < 3) {
-                const todasDatas = items
-                    .filter(it => datePat.test(it.raw))
-                    .map(it => { const m = it.raw.match(datePat); return m ? `${m[3]}-${m[2]}-${m[1]}` : null; })
-                    .filter(Boolean);
-                if (todasDatas.length >= 3) datasDepois.push(...todasDatas.slice(0, 5));
-            }
+            return null;
+        }
 
-            if (datasDepois.length === 0) return null;
+        // Extrai datas de uma imagem agrupando por coluna X.
+        // Funciona mesmo quando OCR não consegue ler o número do container.
+        // Retorna array de até 5 datas em ordem de coluna (esquerda → direita).
+        function extrairDatasImagemPorColunas(words) {
+            if (!words || words.length === 0) return [];
+            const datePat = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 
-            return {
-                container:           containerNum,
-                refTbx:              '',
-                chegadaNavio:        datasDepois[0] || '',
-                registroDi:          datasDepois[1] || '',
-                liberacaoCanal:      datasDepois[2] || '',
-                vencimentoPorto:     datasDepois[3] || '',
-                vencimentoDemurrage: datasDepois[4] || '',
-            };
+            const dateItems = words
+                .filter(w => w.text && datePat.test(w.text.trim()))
+                .map(w => ({
+                    raw: w.text.trim(),
+                    x: (w.bbox.x0 + w.bbox.x1) / 2,
+                    y: (w.bbox.y0 + w.bbox.y1) / 2,
+                    h: w.bbox.y1 - w.bbox.y0,
+                }));
+
+            if (dateItems.length === 0) return [];
+
+            const avgH = dateItems.reduce((s, it) => s + it.h, 0) / dateItems.length || 20;
+            const xTol = avgH * 5;
+
+            // Agrupa datas por coluna X
+            const cols = [];
+            [...dateItems].sort((a, b) => a.x - b.x).forEach(d => {
+                const col = cols.find(c => Math.abs(c.avgX - d.x) < xTol);
+                if (col) {
+                    col.items.push(d);
+                    col.avgX = col.items.reduce((s, it) => s + it.x, 0) / col.items.length;
+                } else {
+                    cols.push({ avgX: d.x, items: [d] });
+                }
+            });
+
+            // Por coluna, pega a data mais representativa (mediana de Y)
+            cols.sort((a, b) => a.avgX - b.avgX);
+            return cols.slice(0, 5).map(col => {
+                const sorted = [...col.items].sort((a, b) => a.y - b.y);
+                const mid = sorted[Math.floor(sorted.length / 2)];
+                const m = mid.raw.match(datePat);
+                return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+            }).filter(Boolean);
         }
 
         async function processarImagemContainer(file) {
@@ -4545,10 +4629,27 @@
                 const contAtual = (document.getElementById('container').value || '').replace(/\s/g, '').toUpperCase();
                 let dados = [];
 
-                // Estratégia 1 (mais confiável): busca direta pelo número já selecionado no formulário
+                // Estratégia 1: busca direta pelo número já selecionado no formulário
                 if (contAtual && words.length > 0) {
                     const match = buscarContainerPorNumero(words, contAtual);
                     if (match) dados = [match];
+                }
+
+                // Estratégia 1.5: container selecionado mas OCR não encontrou o número na imagem
+                // → extrai datas por clustering de colunas X (em follow-ups, todas as linhas têm as mesmas datas)
+                if (dados.length === 0 && contAtual && words.length > 0) {
+                    const datasImg = extrairDatasImagemPorColunas(words);
+                    if (datasImg.length >= 3) {
+                        dados = [{
+                            container:           contAtual,
+                            refTbx:              '',
+                            chegadaNavio:        datasImg[0] || '',
+                            registroDi:          datasImg[1] || '',
+                            liberacaoCanal:      datasImg[2] || '',
+                            vencimentoPorto:     datasImg[3] || '',
+                            vencimentoDemurrage: datasImg[4] || '',
+                        }];
+                    }
                 }
 
                 // Estratégia 2: detecção genérica por bounding boxes
