@@ -4539,10 +4539,13 @@
             // (OCR de planilha lê coluna inteira antes de passar para a próxima)
             const allDateItems = items.filter(it => datePat.test(it.raw));
             if (allDateItems.length >= 3) {
-                const xTol = avgH * 5;
+                const sortedDX = [...allDateItems].sort((a, b) => a.x - b.x);
+                const dGaps = sortedDX.slice(1).map((d, i) => sortedDX[i + 1].x - sortedDX[i].x);
+                const maxDGap = dGaps.length ? Math.max(...dGaps) : 0;
+                const xTolC = Math.min(100, Math.max(avgH, maxDGap * 0.4));
                 const cols = [];
-                [...allDateItems].sort((a, b) => a.x - b.x).forEach(d => {
-                    const col = cols.find(c => Math.abs(c.avgX - d.x) < xTol);
+                sortedDX.forEach(d => {
+                    const col = cols.find(c => Math.abs(c.avgX - d.x) < xTolC);
                     if (col) {
                         col.items.push(d);
                         col.avgX = col.items.reduce((s, it) => s + it.x, 0) / col.items.length;
@@ -4552,7 +4555,6 @@
                 });
                 cols.sort((a, b) => a.avgX - b.avgX);
                 const datasColunas = cols.slice(0, 5).map(col => {
-                    // Dentro de cada coluna, pega a data na linha mais próxima ao container
                     const melhor = col.items.reduce((prev, curr) =>
                         Math.abs(curr.y - containerY) < Math.abs(prev.y - containerY) ? curr : prev
                     );
@@ -4583,12 +4585,20 @@
             if (dateItems.length === 0) return [];
 
             const avgH = dateItems.reduce((s, it) => s + it.h, 0) / dateItems.length || 20;
-            const xTol = avgH * 5;
 
-            // Agrupa datas por coluna X
+            // Detecta espaçamento real entre colunas pela maior lacuna X entre datas adjacentes.
+            // Datas da mesma coluna têm X quase idêntico; datas de colunas distintas têm lacuna grande.
+            const sortedByX = [...dateItems].sort((a, b) => a.x - b.x);
+            const gaps = sortedByX.slice(1).map((d, i) => sortedByX[i + 1].x - sortedByX[i].x);
+            const maxGap = gaps.length ? Math.max(...gaps) : 0;
+            const minGap = gaps.length ? Math.min(...gaps) : 0;
+            // Limiar: metade da maior lacuna (separa colunas distintas), mas no mínimo avgH e no máximo 100px
+            const gapThreshold = Math.min(100, Math.max(avgH, maxGap * 0.4));
+
+            // Agrupa datas por coluna X usando o limiar adaptativo
             const cols = [];
-            [...dateItems].sort((a, b) => a.x - b.x).forEach(d => {
-                const col = cols.find(c => Math.abs(c.avgX - d.x) < xTol);
+            sortedByX.forEach(d => {
+                const col = cols.find(c => Math.abs(c.avgX - d.x) < gapThreshold);
                 if (col) {
                     col.items.push(d);
                     col.avgX = col.items.reduce((s, it) => s + it.x, 0) / col.items.length;
