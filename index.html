@@ -3106,6 +3106,13 @@
                 return;
             }
 
+            function toNum(val) {
+                if (!val) return '';
+                const s = String(val).replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+                const n = parseFloat(s);
+                return isNaN(n) ? '' : n;
+            }
+
             const dados = containers.map(c => ({
                 'Ref. TBX': c.refTbx,
                 'Containers': c.container,
@@ -3120,23 +3127,49 @@
                 'Previsão início descarregamento': c.previsaoDescarregamento || '',
                 'Transportadora': c.transportadora || '',
                 'Canal': c.canal || '',
-                'Frete (R$)': c.frete || '',
-                'Valor 1° período': c.valorPeriodo1 || '',
-                'Valor 2° período': c.valorPeriodo2 || '',
-                'Valor Armazenagem Pátio': c.valorPatio || '',
-                'Valor Janela Especial': c.valorJanela || '',
-                'Controle de acesso': c.valorControleAcesso || '',
-                'Frete extra - Local de entrega': c.freteExtraLocalEntrega || '',
-                'Serviço de entrega de container': c.servicoEntregaContainer || '',
-                'Adicional BI-TREM': c.adicionalBitrem || ''
+                'Frete (R$)': toNum(c.frete),
+                'Valor 1° período': toNum(c.valorPeriodo1),
+                'Valor 2° período': toNum(c.valorPeriodo2),
+                'Valor Armazenagem Pátio': toNum(c.valorPatio),
+                'Valor Janela Especial': toNum(c.valorJanela),
+                'Controle de acesso': toNum(c.valorControleAcesso),
+                'Frete extra - Local de entrega': toNum(c.freteExtraLocalEntrega),
+                'Serviço de entrega de container': toNum(c.servicoEntregaContainer),
+                'Adicional BI-TREM': toNum(c.adicionalBitrem)
             }));
 
             const ws = XLSX.utils.json_to_sheet(dados);
+
+            // Aplicar formato de moeda brasileira nas colunas de valor
+            const colsValor = ['N','O','P','Q','R','S','T','U','V'];
+            const totalLinhas = dados.length + 1;
+            colsValor.forEach(col => {
+                for (let row = 2; row <= totalLinhas; row++) {
+                    const cell = ws[col + row];
+                    if (cell && typeof cell.v === 'number') {
+                        cell.z = '#.##0,00';
+                    }
+                }
+            });
+
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Containers');
-            
-            const fileName = `containers_${new Date().toISOString().split('T')[0]}.xlsx`;
-            XLSX.writeFile(wb, fileName);
+
+            try {
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbout], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `containers_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch(e) {
+                console.error('Erro ao exportar:', e);
+                alert('⚠️ Erro ao gerar o arquivo Excel. Verifique o console para detalhes.');
+            }
         }
 
         // Limpar todos os dados
