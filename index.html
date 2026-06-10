@@ -3108,7 +3108,12 @@
 
             function toNum(val) {
                 if (!val) return '';
-                const s = String(val).replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+                let s = String(val).replace('R$', '').trim();
+                // Formato brasileiro (ex: "1.900,00") — remove ponto milhar, troca vírgula por ponto
+                if (s.includes(',')) {
+                    s = s.replace(/\./g, '').replace(',', '.');
+                }
+                // Se não tem vírgula, já está em formato numérico (ex: "1900.00") — usa direto
                 const n = parseFloat(s);
                 return isNaN(n) ? '' : n;
             }
@@ -3147,7 +3152,7 @@
                 for (let row = 2; row <= totalLinhas; row++) {
                     const cell = ws[col + row];
                     if (cell && typeof cell.v === 'number') {
-                        cell.z = '#.##0,00';
+                        cell.z = '#,##0.00';
                     }
                 }
             });
