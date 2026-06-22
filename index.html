@@ -579,30 +579,55 @@
             margin-bottom: 24px;
         }
         .stat-card {
-            background: var(--accent);
-            color: white;
-            padding: 18px 16px;
+            background: var(--bg-card);
+            color: #fff;
+            padding: 20px 18px;
             border-radius: var(--radius);
             text-align: center;
             position: relative;
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.08);
+            border: 1px solid var(--border-mid);
+        }
+        /* colored left-border accent line */
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: var(--card-accent, var(--accent));
+            border-radius: var(--radius) 0 0 var(--radius);
         }
         .stat-card::after {
             content: '';
             position: absolute;
-            top: -20px; right: -20px;
-            width: 80px; height: 80px;
-            background: rgba(255,255,255,0.06);
+            top: -30px; right: -30px;
+            width: 100px; height: 100px;
+            background: var(--card-accent, var(--accent));
+            opacity: 0.08;
             border-radius: 50%;
         }
         .stat-card h3 {
-            font-size: 1.7em;
+            font-size: 1.65em;
             font-weight: 800;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
             position: relative;
+            color: #fff;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.4);
         }
-        .stat-card p { opacity: 0.85; font-size: 13px; position: relative; }
+        .stat-card p {
+            font-size: 12px;
+            font-weight: 600;
+            position: relative;
+            color: rgba(255,255,255,0.75);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .stat-card small {
+            font-size: 11px;
+            font-weight: 600;
+            position: relative;
+            color: rgba(255,255,255,0.6);
+        }
 
         /* ── EMPTY STATE ── */
         .empty-state {
@@ -1060,7 +1085,7 @@
             </div>
             
             <div class="stats" style="margin-bottom: 20px;">
-                <div class="stat-card">
+                <div class="stat-card" style="--card-accent:#3b82f6;">
                     <h3 id="totalContainers">0</h3>
                     <p>Total de Containers</p>
                 </div>
@@ -1069,29 +1094,29 @@
             <div class="form-section" style="margin-bottom: 20px;">
                 <h3>💰 Custo Operação (TBX)</h3>
                 <div class="stats" style="margin-bottom: 0;">
-                <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="stat-card" style="--card-accent:#06b6d4;">
                     <h3 id="totalFrete">R$ 0,00</h3>
                     <p>Total em Frete</p>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="stat-card" style="--card-accent:#e879f9;">
                     <h3 id="totalPeriodo2">R$ 0,00</h3>
-                    <p style="margin-bottom: 4px;">Valor 2º Período</p>
-                    <small id="totalPeriodo2Qtd" style="color: #fbe9ff; font-weight: 600;">0 container(s)</small>
+                    <p style="margin-bottom:4px;">Valor 2º Período</p>
+                    <small id="totalPeriodo2Qtd">0 container(s)</small>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #1fa2ff 0%, #12d8fa 50%, #a6ffcb 100%);">
+                <div class="stat-card" style="--card-accent:#10b981;">
                     <h3 id="totalPatio">R$ 0,00</h3>
-                    <p style="margin-bottom: 4px;">Armazenagem em Pátio</p>
-                    <small id="totalPatioQtd" style="color: #eefcff; font-weight: 600;">0 container(s)</small>
+                    <p style="margin-bottom:4px;">Armazenagem em Pátio</p>
+                    <small id="totalPatioQtd">0 container(s)</small>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #7F7FD5 0%, #86A8E7 50%, #91EAE4 100%);">
+                <div class="stat-card" style="--card-accent:#818cf8;">
                     <h3 id="totalJanela">R$ 0,00</h3>
-                    <p style="margin-bottom: 4px;">Janela Especial</p>
-                    <small id="totalJanelaQtd" style="color: #e8f5ff; font-weight: 600;">0 container(s)</small>
+                    <p style="margin-bottom:4px;">Janela Especial</p>
+                    <small id="totalJanelaQtd">0 container(s)</small>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #ff9966 0%, #ff5e62 100%);">
+                <div class="stat-card" style="--card-accent:#f97316;">
                     <h3 id="totalFreteExtra">R$ 0,00</h3>
-                    <p style="margin-bottom: 4px;">Frete Extra - Local de Entrega</p>
-                    <small id="totalFreteExtraQtd" style="color: #fff1eb; font-weight: 600;">0 container(s)</small>
+                    <p style="margin-bottom:4px;">Frete Extra - Local de Entrega</p>
+                    <small id="totalFreteExtraQtd">0 container(s)</small>
                 </div>
                 </div>
             </div>
@@ -1099,25 +1124,25 @@
             <div class="form-section" style="margin-bottom: 20px;">
                 <h3>⚓ Custo Porto</h3>
                 <div class="stats" style="margin-bottom: 0;">
-                <div class="stat-card" style="background: linear-gradient(135deg, #ffb347 0%, #ffcc33 100%);">
+                <div class="stat-card" style="--card-accent:#f59e0b;">
                     <h3 id="totalPeriodo1">R$ 0,00</h3>
-                    <p style="margin-bottom: 4px;">Valor 1º Período</p>
-                    <small id="totalPeriodo1Qtd" style="color: #fff4d6; font-weight: 600;">0 container(s)</small>
+                    <p style="margin-bottom:4px;">Valor 1º Período</p>
+                    <small id="totalPeriodo1Qtd">0 container(s)</small>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);">
+                <div class="stat-card" style="--card-accent:#14b8a6;">
                     <h3 id="totalControleAcesso">R$ 0,00</h3>
-                    <p style="margin-bottom: 4px;">Controle de Acesso</p>
-                    <small id="totalControleAcessoQtd" style="color: #ddfff5; font-weight: 600;">0 container(s)</small>
+                    <p style="margin-bottom:4px;">Controle de Acesso</p>
+                    <small id="totalControleAcessoQtd">0 container(s)</small>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);">
+                <div class="stat-card" style="--card-accent:#eab308;">
                     <h3 id="totalServicoEntrega">R$ 0,00</h3>
-                    <p style="margin-bottom: 4px;">Serviço de Entrega</p>
-                    <small id="totalServicoEntregaQtd" style="color: #fff8d6; font-weight: 600;">0 container(s)</small>
+                    <p style="margin-bottom:4px;">Serviço de Entrega</p>
+                    <small id="totalServicoEntregaQtd">0 container(s)</small>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #654ea3 0%, #eaafc8 100%);">
+                <div class="stat-card" style="--card-accent:#a855f7;">
                     <h3 id="totalBitrem">R$ 0,00</h3>
-                    <p style="margin-bottom: 4px;">Adicional BI-TREM</p>
-                    <small id="totalBitremQtd" style="color: #fff0fb; font-weight: 600;">0 container(s)</small>
+                    <p style="margin-bottom:4px;">Adicional BI-TREM</p>
+                    <small id="totalBitremQtd">0 container(s)</small>
                 </div>
                 </div>
             </div>
@@ -1239,15 +1264,15 @@
 
             <!-- Resumo da Semana -->
             <div class="stats" style="margin-bottom: 20px;">
-                <div class="stat-card">
+                <div class="stat-card" style="--card-accent:#3b82f6;">
                     <h3 id="totalContainersSemana">0</h3>
                     <p>Containers Previstos</p>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="stat-card" style="--card-accent:#e879f9;">
                     <h3 id="totalItensSemana">0</h3>
                     <p>Total de Itens</p>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="stat-card" style="--card-accent:#06b6d4;">
                     <h3 id="totalUnidadesSemana">0</h3>
                     <p>Total de Unidades</p>
                 </div>
@@ -2488,7 +2513,7 @@
                 <tr>
                     <td><strong>${nome}</strong></td>
                     <td>${dados.quantidade}</td>
-                    <td><strong style="color: #007acc;">${formatarMoeda(dados.totalFrete)}</strong></td>
+                    <td><strong style="color: var(--accent-hi);">${formatarMoeda(dados.totalFrete)}</strong></td>
                 </tr>
             `).join('');
         }
