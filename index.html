@@ -581,12 +581,17 @@
         .stat-card {
             background: var(--bg-card);
             color: #fff;
-            padding: 20px 18px;
+            padding: 20px 18px 18px;
             border-radius: var(--radius);
             text-align: center;
             position: relative;
             overflow: hidden;
             border: 1px solid var(--border-mid);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
         }
         /* colored left-border accent line */
         .stat-card::before {
@@ -1102,7 +1107,8 @@
                 <div class="stats" style="margin-bottom: 0;">
                 <div class="stat-card" style="--card-accent:#06b6d4;">
                     <h3 id="totalFrete">R$ 0,00</h3>
-                    <p>Total em Frete</p>
+                    <p style="margin-bottom:4px;">Total em Frete</p>
+                    <small id="totalFreteQtd">0 container(s)</small>
                 </div>
                 <div class="stat-card" style="--card-accent:#e879f9;">
                     <h3 id="totalPeriodo2">R$ 0,00</h3>
@@ -2366,7 +2372,9 @@
 
             // Calcular total de frete - do ano selecionado
             const totalFrete = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.frete) || 0), 0);
+            const qtdFrete = containersFiltradosPorAno.filter(c => (parseFloat(c.frete) || 0) > 0).length;
             document.getElementById('totalFrete').textContent = formatarMoeda(totalFrete);
+            document.getElementById('totalFreteQtd').textContent = `${qtdFrete} container(s)`;
 
             // Calcular totais adicionais de custos
             const totalPeriodo1 = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.valorPeriodo1) || 0), 0);
