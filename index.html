@@ -73,7 +73,7 @@
             position: relative;
             border-bottom: 1px solid var(--border);
             border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-            overflow: hidden;
+            overflow: visible;
         }
         header::before {
             content:'';
@@ -735,6 +735,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            z-index: 10;
         }
         #loginBtn {
             padding: 8px 16px;
@@ -1478,6 +1479,41 @@
     </div>
 
     <script>
+        // ── CONFIGURAÇÃO FIREBASE ──
+        const firebaseConfig = {
+            apiKey: "AIzaSyB-1btOCpD3n9f0cR00iJDN64tGlAbU4wc",
+            authDomain: "gestao-containers.firebaseapp.com",
+            projectId: "gestao-containers",
+            storageBucket: "gestao-containers.firebasestorage.app",
+            messagingSenderId: "248431468982",
+            appId: "1:248431468982:web:ae62d3255200adb55c6117",
+            measurementId: "G-88V7Q1FC8D"
+        };
+
+        // ── VARIÁVEIS GLOBAIS ──
+        let db = null;
+        let containers = [];
+        let transportadoras = [];
+        let editandoId = null;
+        let filtroStatusAtual = 'pendente';
+        let anoSelecionado = 'todos';
+        let graficoMensal = null;
+        let graficoMensalComparativo = null;
+        let mesesOcultosMensal = new Set();
+        let containersFiltradosGraficoMensal = [];
+        let unsubscribeContainers = null;
+        let unsubscribeTransportadoras = null;
+        let unsubscribePrevisoes = null;
+        let unsubscribeParametrosPallet = null;
+        let filtroLotePlanejador = '';
+        let paginaAtual = 1;
+        const itensPorPagina = 20;
+
+        function resetarOcultacaoMeses() {
+            mesesOcultosMensal.clear();
+            atualizarGraficoMensal(containersFiltradosGraficoMensal);
+        }
+
                 // --- TOAST NOTIFICATIONS ---
                 function showToast(msg, type = 'info') {
                     const c = document.getElementById('toast-container');
@@ -1492,6 +1528,7 @@
                 let usuarioLogado = false;
                 let listenersAtivos = false;
                 let colunasDetalhesExpandidas = false;
+
                 function abrirModalLogin() {
                     document.getElementById('modalLogin').style.display = 'flex';
                     document.getElementById('loginUsuario').focus();
@@ -1501,21 +1538,6 @@
                     document.getElementById('formLogin').reset();
                     document.getElementById('loginErro').style.display = 'none';
                 }
-                document.getElementById('formLogin').addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const usuario = document.getElementById('loginUsuario').value.trim();
-                    const senha = document.getElementById('loginSenha').value;
-                    if (usuario === 'wellinton' && senha === 'wellinton7842') {
-                        usuarioLogado = true;
-                        localStorage.setItem('usuarioLogado', '1');
-                        fecharModalLogin();
-                        atualizarPermissoes();
-                        iniciarListenersTempoReal();
-                        showToast('Login realizado com sucesso!', 'success');
-                    } else {
-                        document.getElementById('loginErro').style.display = 'block';
-                    }
-                });
                 function logout() {
                     usuarioLogado = false;
                     localStorage.removeItem('usuarioLogado');
@@ -1626,46 +1648,6 @@
                     // Colunas privadas na consulta
                     aplicarVisibilidadeColunasPrivadas();
                 }
-                // Fechar modal login ao clicar fora
-                document.getElementById('modalLogin').addEventListener('click', function(e) {
-                    if (e.target === this) fecharModalLogin();
-                });
-
-        // Configuração do Firebase — declarada aqui, usada após window load
-        const firebaseConfig = {
-            apiKey: "AIzaSyB-1btOCpD3n9f0cR00iJDN64tGlAbU4wc",
-            authDomain: "gestao-containers.firebaseapp.com",
-            projectId: "gestao-containers",
-            storageBucket: "gestao-containers.firebasestorage.app",
-            messagingSenderId: "248431468982",
-            appId: "1:248431468982:web:ae62d3255200adb55c6117",
-            measurementId: "G-88V7Q1FC8D"
-        };
-
-        // Variáveis globais (declaradas antes de qualquer uso)
-        let db = null;
-        let containers = [];
-        let transportadoras = [];
-        let editandoId = null;
-        let filtroStatusAtual = 'pendente';
-        let anoSelecionado = 'todos';
-        let graficoMensal = null;
-        let graficoMensalComparativo = null;
-        let mesesOcultosMensal = new Set();
-        let containersFiltradosGraficoMensal = [];
-        let unsubscribeContainers = null;
-        let unsubscribeTransportadoras = null;
-        let unsubscribePrevisoes = null;
-        let unsubscribeParametrosPallet = null;
-        let filtroLotePlanejador = '';
-        let paginaAtual = 1;
-        const itensPorPagina = 20;
-
-        function resetarOcultacaoMeses() {
-            mesesOcultosMensal.clear();
-            atualizarGraficoMensal(containersFiltradosGraficoMensal);
-        }
-
         // Inicializa Firebase e arranca a aplicação — só roda após todos os scripts externos carregarem
         function inicializarApp() {
             try {
@@ -1675,6 +1657,27 @@
                 }
                 firebase.initializeApp(firebaseConfig);
                 db = firebase.firestore();
+
+                // Listeners de UI que dependem do DOM estar pronto
+                document.getElementById('formLogin').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const usuario = document.getElementById('loginUsuario').value.trim();
+                    const senha   = document.getElementById('loginSenha').value;
+                    if (usuario === 'wellinton' && senha === 'wellinton7842') {
+                        usuarioLogado = true;
+                        localStorage.setItem('usuarioLogado', '1');
+                        fecharModalLogin();
+                        atualizarPermissoes();
+                        iniciarListenersTempoReal();
+                        showToast('Login realizado com sucesso!', 'success');
+                    } else {
+                        document.getElementById('loginErro').style.display = 'block';
+                    }
+                });
+                document.getElementById('modalLogin').addEventListener('click', function(e) {
+                    if (e.target === this) fecharModalLogin();
+                });
+
                 usuarioLogado = localStorage.getItem('usuarioLogado') === '1';
                 atualizarPermissoes();
                 iniciarListenersTempoReal();
