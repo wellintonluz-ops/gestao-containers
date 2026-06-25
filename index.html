@@ -844,6 +844,11 @@
         }
         .section-h2 .accent { color: var(--accent-hi); }
 
+        /* ── COLUNAS RESTRITAS POR LOGIN ── */
+        .col-status, .col-acoes { transition: none; }
+        .cols-login-hidden .col-status,
+        .cols-login-hidden .col-acoes { display: none; }
+
         /* ── TOGGLE BUTTON ── */
         #btnToggleColunasDetalhes {
             background: var(--bg-card);
@@ -941,7 +946,7 @@
                 <table id="containerTable">
                     <thead>
                         <tr>
-                            <th>Status</th>
+                            <th class="col-status">Status</th>
                             <th>Ref. TBX</th>
                             <th>N° Container</th>
                             <th class="col-private col-expandable">Chegada Navio</th>
@@ -964,7 +969,7 @@
                             <th class="col-private">Frete extra - Local de entrega</th>
                             <th class="col-private">Serviço de entrega de container</th>
                             <th class="col-private">Adicional BI-TREM</th>
-                            <th>Ações</th>
+                            <th class="col-acoes">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
@@ -1629,6 +1634,11 @@
                     if (!usuarioLogado) {
                         colunasDetalhesExpandidas = false;
                     }
+                    // Ocultar colunas Status e Ações quando deslogado
+                    const tbl = document.getElementById('containerTable');
+                    if (tbl) {
+                        tbl.classList.toggle('cols-login-hidden', !usuarioLogado);
+                    }
                     atualizarTextoBotaoColunasDetalhes();
                     // Botões de ação restritos (exceto navegação de semana)
                     const botoesRestritos = document.querySelectorAll('.btn-edit, .btn-delete, .btn-export, .btn-status, [onclick^="abrirModalRegistro"], [onclick^="limparTodosDados"], [onclick^="marcarTodosComoEntregue"]');
@@ -2107,7 +2117,7 @@
                 }
                 return `
                 <tr class="row-clickable" onclick="abrirItensContainerModal('${c.container}','${c.refTbx}')">
-                    <td>
+                    <td class="col-status">
                         ${isEntregue
                             ? '<button class="btn btn-status entregue" disabled>✅ Entregue</button>'
                             : (usuarioLogado
@@ -2137,7 +2147,7 @@
                     <td class="col-private">${formatarMoeda(c.freteExtraLocalEntrega)}</td>
                     <td class="col-private">${formatarMoeda(c.servicoEntregaContainer)}</td>
                     <td class="col-private">${formatarMoeda(c.adicionalBitrem)}</td>
-                    <td>${acoes}</td>
+                    <td class="col-acoes">${acoes}</td>
                 </tr>
             `;
             };
@@ -2166,6 +2176,10 @@
 
             tbody.innerHTML = linhas.join('');
             aplicarVisibilidadeColunasPrivadas();
+
+            // Reaplicar visibilidade das colunas de login
+            const tbl = document.getElementById('containerTable');
+            if (tbl) tbl.classList.toggle('cols-login-hidden', !usuarioLogado);
             
             // Atualizar paginação
             atualizarPaginacao(totalPaginas, containersFiltrados.length);
