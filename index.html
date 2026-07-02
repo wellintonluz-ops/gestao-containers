@@ -1330,11 +1330,23 @@
                 </div>
 
                 <!-- Importação de arquivo -->
-                <div style="margin-bottom: 18px; padding: 12px 16px; background: var(--bg-surface); border-radius: 8px; border: 1px dashed var(--accent); display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                    <span style="color: var(--accent-hi); font-size: 13px; font-weight: 600;">📋 Importar do Follow-up:</span>
-                    <button type="button" onclick="abrirImportacaoContainer()" class="btn btn-primary" style="padding: 7px 16px; font-size:13px;">📂 Excel / PDF / Imagem</button>
-                    <input type="file" id="importarContainerInput" accept=".xlsx,.xls,.csv,.pdf,.png,.jpg,.jpeg" style="display: none;">
-                    <span id="importacaoStatus" style="font-size: 12px; color: var(--text-md);"></span>
+                <div style="margin-bottom: 18px; padding: 14px 16px; background: var(--bg-surface); border-radius: 8px; border: 1px dashed var(--accent); display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <span style="color: var(--accent-hi); font-size: 13px; font-weight: 700;">📋 Importar do Follow-up:</span>
+                        <button type="button" onclick="abrirImportacaoContainer()" class="btn btn-primary" style="padding: 7px 16px; font-size:13px;">📂 Follow-up (Excel/PDF/Imagem)</button>
+                        <input type="file" id="importarContainerInput" accept=".xlsx,.xls,.csv,.pdf,.png,.jpg,.jpeg" style="display: none;">
+                        <span id="importacaoStatus" style="font-size: 12px; color: var(--text-md);"></span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--border);">
+                        <span style="color: #67e8f9; font-size: 13px; font-weight: 700;">📅 Importar Programação de Recebimento:</span>
+                        <button type="button" onclick="document.getElementById('importProgramacaoInput').click()" class="btn btn-import" style="padding: 7px 16px; font-size:13px;">📥 Importar Planilha</button>
+                        <input type="file" id="importProgramacaoInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="importarProgramacaoRecebimento(event)">
+                        <span id="programacaoImportStatus" style="font-size: 12px; color: var(--text-md);"></span>
+                    </div>
+                    <div style="background: var(--bg-card); border-radius: 6px; padding: 8px 12px; font-size: 11.5px; color: var(--text-md); line-height: 1.7;">
+                        ℹ️ <strong style="color: var(--accent-hi);">Formato da Planilha de Programação:</strong>
+                        Col. A = Ref TBX (Lote) &nbsp;|&nbsp; Col. B = N° Container &nbsp;|&nbsp; Col. C = Data Entrega TBX &nbsp;|&nbsp; Col. D = Previsão Descarga (hora) &nbsp;|&nbsp; Col. E = Data Carregamento
+                    </div>
                 </div>
 
                 <form id="containerForm" class="form-section" style="margin: 0;">
@@ -1356,11 +1368,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="refTbx">Ref. TBX (Lote) *</label>
-                            <input type="text" id="refTbx" required placeholder="Ex: TBX-2025-001">
+                            <input type="text" id="refTbx" required placeholder="Ex: TBX-2025-001" oninput="verificarPlanilhaNaMemoria()">
                         </div>
                         <div class="form-group">
                             <label for="container">N° Container *</label>
-                            <input type="text" id="container" required placeholder="Ex: ABCD1234567">
+                            <input type="text" id="container" required placeholder="Ex: ABCD1234567" oninput="verificarPlanilhaNaMemoria()">
                         </div>
                     </div>
 
@@ -4028,6 +4040,10 @@
             document.getElementById('modalRegistro').style.display = 'none';
             editandoId = null;
             limparFormulario();
+            // Limpar planilha de programação da memória
+            window._planilhaProgramacao = null;
+            const el = document.getElementById('programacaoImportStatus');
+            if (el) { el.textContent = ''; }
         }
 
         // Editar container existente
@@ -5179,6 +5195,172 @@
                 e.target.value = '';
             });
         })();
+
+        // ═══════════════════════════════════════════════════════
+        // IMPORTAÇÃO DE PROGRAMAÇÃO DE RECEBIMENTO
+        // Formato: A=Ref TBX | B=Container | C=Entrega TBX | D=Hora Descarga | E=Data Carregamento
+        // ═══════════════════════════════════════════════════════
+        function importarProgramacaoRecebimento(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const setStatus = (msg, cor) => {
+                const el = document.getElementById('programacaoImportStatus');
+                if (el) { el.textContent = msg; el.style.color = cor || 'var(--text-md)'; }
+            };
+
+            setStatus('⏳ Lendo planilha...', 'var(--accent-hi)');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: 'dd/mm/yyyy' });
+
+                    // Montar índice da planilha: { 'LOTE|CONTAINER': { entregaTbx, previsaoDescarga, dataCarregamento } }
+                    const planilha = new Map();
+                    let linhasValidas = 0;
+
+                    for (let i = 0; i < rows.length; i++) {
+                        const row = rows[i];
+                        const lote = (row[0] || '').toString().trim();
+                        const container = (row[1] || '').toString().trim().replace(/\s/g, '').toUpperCase();
+                        if (!lote || !container) continue;
+
+                        // Ignorar linha de cabeçalho
+                        if (lote.toLowerCase().includes('ref') || lote.toLowerCase().includes('lote')) continue;
+
+                        const entregaRaw      = (row[2] || '').toString().trim();
+                        const horaDescarga    = (row[3] || '').toString().trim();
+                        const carregamentoRaw = (row[4] || '').toString().trim();
+
+                        planilha.set(`${lote}|${container}`, {
+                            entregaTbx:             parsearDataPlanilha(entregaRaw),
+                            previsaoDescarregamento: parsearHoraPlanilha(horaDescarga),
+                            dataCarregamento:        parsearDataPlanilha(carregamentoRaw)
+                        });
+                        linhasValidas++;
+                    }
+
+                    if (linhasValidas === 0) {
+                        setStatus('❌ Nenhuma linha válida encontrada. Verifique o formato.', 'var(--danger)');
+                        event.target.value = '';
+                        return;
+                    }
+
+                    // Tentar cruzar com o formulário atual
+                    const loteAtual      = (document.getElementById('refTbx').value || '').trim();
+                    const containerAtual = (document.getElementById('container').value || '').trim().replace(/\s/g, '').toUpperCase();
+
+                    if (loteAtual && containerAtual) {
+                        // Formulário já tem dados — tentar match direto
+                        const chave = `${loteAtual}|${containerAtual}`;
+                        const match = planilha.get(chave);
+                        if (match) {
+                            aplicarDadosProgramacao(match);
+                            setStatus(`✅ Dados preenchidos para ${containerAtual}`, 'var(--success)');
+                            showToast(`Programação importada: ${containerAtual}`, 'success');
+                        } else {
+                            // Tentar só pelo container
+                            const matchSoContainer = [...planilha.entries()].find(([k]) => k.split('|')[1] === containerAtual);
+                            if (matchSoContainer) {
+                                aplicarDadosProgramacao(matchSoContainer[1]);
+                                setStatus(`✅ Container encontrado (lote diferente). Dados preenchidos.`, 'var(--warning)');
+                                showToast(`Programação importada: ${containerAtual}`, 'success');
+                            } else {
+                                setStatus(`⚠️ Container "${containerAtual}" não encontrado na planilha.`, 'var(--danger)');
+                                showToast(`Container ${containerAtual} não encontrado na planilha.`, 'error');
+                                // Armazenar planilha para uso posterior
+                                window._planilhaProgramacao = planilha;
+                            }
+                        }
+                    } else {
+                        // Formulário vazio — salvar planilha em memória para uso ao preencher os campos
+                        window._planilhaProgramacao = planilha;
+                        setStatus(`✅ ${linhasValidas} registro(s) carregados. Preencha o Lote e Container para aplicar.`, 'var(--success)');
+                        showToast(`Planilha carregada com ${linhasValidas} registros.`, 'success');
+                    }
+                } catch(err) {
+                    console.error('Erro ao importar programação:', err);
+                    setStatus('❌ Erro ao ler planilha. Verifique o formato.', 'var(--danger)');
+                    showToast('Erro ao ler planilha de programação.', 'error');
+                }
+                event.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Aplica os dados da programação nos campos do formulário
+        function aplicarDadosProgramacao(dados) {
+            if (dados.entregaTbx)             document.getElementById('entregaTbx').value             = dados.entregaTbx;
+            if (dados.previsaoDescarregamento) document.getElementById('previsaoDescarregamento').value = dados.previsaoDescarregamento;
+            if (dados.dataCarregamento)        document.getElementById('dataCarregamento').value        = dados.dataCarregamento;
+        }
+
+        // Converte texto de data (DD/MM/AAAA ou AAAA-MM-DD ou serial Excel) para YYYY-MM-DD
+        function parsearDataPlanilha(valor) {
+            if (!valor) return '';
+            const s = valor.toString().trim();
+
+            // Formato dd/mm/aaaa
+            const m1 = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+            if (m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+
+            // Formato aaaa-mm-dd
+            const m2 = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+            if (m2) return `${m2[1]}-${m2[2].padStart(2,'0')}-${m2[3].padStart(2,'0')}`;
+
+            // Serial numérico Excel
+            const n = parseFloat(s);
+            if (!isNaN(n) && n > 40000 && n < 60000) {
+                const d = new Date(Math.round((n - 25569) * 86400 * 1000));
+                const yr = d.getUTCFullYear(), mo = String(d.getUTCMonth()+1).padStart(2,'0'), dy = String(d.getUTCDate()).padStart(2,'0');
+                return `${yr}-${mo}-${dy}`;
+            }
+            return '';
+        }
+
+        // Converte texto de hora (06:00, 6:00, 0600) para HH:MM
+        function parsearHoraPlanilha(valor) {
+            if (!valor) return '';
+            const s = valor.toString().trim();
+
+            // HH:MM ou H:MM
+            const m1 = s.match(/^(\d{1,2}):(\d{2})$/);
+            if (m1) return `${m1[1].padStart(2,'0')}:${m1[2]}`;
+
+            // HHMM (4 dígitos)
+            const m2 = s.match(/^(\d{2})(\d{2})$/);
+            if (m2) return `${m2[1]}:${m2[2]}`;
+
+            // Fração decimal de dia (Excel time serial)
+            const n = parseFloat(s);
+            if (!isNaN(n) && n >= 0 && n < 1) {
+                const totalMin = Math.round(n * 24 * 60);
+                return `${String(Math.floor(totalMin/60)).padStart(2,'0')}:${String(totalMin%60).padStart(2,'0')}`;
+            }
+            return '';
+        }
+
+        // Ao preencher Lote + Container manualmente, verifica se há planilha em memória
+        function verificarPlanilhaNaMemoria() {
+            if (!window._planilhaProgramacao) return;
+            const lote      = (document.getElementById('refTbx').value || '').trim();
+            const container = (document.getElementById('container').value || '').trim().replace(/\s/g, '').toUpperCase();
+            if (!lote || !container) return;
+
+            const chave = `${lote}|${container}`;
+            const match = window._planilhaProgramacao.get(chave)
+                       || [...window._planilhaProgramacao.entries()].find(([k]) => k.split('|')[1] === container)?.[1];
+
+            if (match) {
+                aplicarDadosProgramacao(match);
+                const el = document.getElementById('programacaoImportStatus');
+                if (el) { el.textContent = `✅ Dados aplicados para ${container}`; el.style.color = 'var(--success)'; }
+                showToast(`Programação aplicada: ${container}`, 'success');
+            }
+        }
 
     </script>
 
