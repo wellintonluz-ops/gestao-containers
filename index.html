@@ -1190,6 +1190,27 @@
                 <canvas id="graficoMensal" style="max-height: 400px;"></canvas>
             </div>
 
+            <!-- NOVO: Histórico diário por período -->
+            <div class="table-container" style="padding: 20px; margin-top: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <h3 style="margin: 0; color: var(--text-hi); font-size: 1em;">📅 Histórico Diário de Recebimentos (Entrega TBX)</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <label style="color: var(--text-md); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Período:</label>
+                        <button class="btn sub-tab active" id="btnPeriodo30" onclick="selecionarPeriodoHistorico(30)" style="border-radius:6px; padding:6px 14px; font-size:12px;">30 dias</button>
+                        <button class="btn sub-tab" id="btnPeriodo60" onclick="selecionarPeriodoHistorico(60)" style="border-radius:6px; padding:6px 14px; font-size:12px;">60 dias</button>
+                        <button class="btn sub-tab" id="btnPeriodo90" onclick="selecionarPeriodoHistorico(90)" style="border-radius:6px; padding:6px 14px; font-size:12px;">90 dias</button>
+                        <div style="display:flex; align-items:center; gap:6px; background:var(--bg-surface); border:1px solid var(--border); border-radius:8px; padding:4px 10px;">
+                            <span style="color:var(--text-md); font-size:12px; font-weight:600;">De</span>
+                            <input type="date" id="filtroDiarioInicio" onchange="atualizarGraficoHistoricoDiario()" style="padding:4px 8px; font-size:12px; border:none; background:transparent; color:var(--text-hi); font-family:'Inter',sans-serif; width:130px;">
+                            <span style="color:var(--text-md); font-size:12px; font-weight:600;">até</span>
+                            <input type="date" id="filtroDiarioFim" onchange="atualizarGraficoHistoricoDiario()" style="padding:4px 8px; font-size:12px; border:none; background:transparent; color:var(--text-hi); font-family:'Inter',sans-serif; width:130px;">
+                        </div>
+                    </div>
+                </div>
+                <canvas id="graficoHistoricoDiario" style="max-height: 340px;"></canvas>
+                <small style="color: var(--text-lo); display: block; margin-top: 10px;">Containers agrupados por data de Entrega TBX. Use os botões ou o seletor de período para filtrar.</small>
+            </div>
+
             <div class="table-container" style="padding: 20px; margin-top: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
                     <h3 style="margin: 0; color: var(--text-hi); font-size: 1em;">📊 Comparativo Mensal por Ano</h3>
@@ -1522,6 +1543,8 @@
         let anoSelecionado = 'todos';
         let graficoMensal = null;
         let graficoMensalComparativo = null;
+        let graficoHistoricoDiario = null;
+        let periodoHistoricoDias = 30;
         let mesesOcultosMensal = new Set();
         let containersFiltradosGraficoMensal = [];
         let unsubscribeContainers = null;
@@ -1709,6 +1732,16 @@
                 usuarioLogado = localStorage.getItem('usuarioLogado') === '1';
                 atualizarPermissoes();
                 iniciarListenersTempoReal();
+
+                // Inicializar datas do gráfico histórico diário (últimos 30 dias)
+                const hoje = new Date();
+                const ini30 = new Date();
+                ini30.setDate(hoje.getDate() - 29);
+                const fmt = d => d.toISOString().slice(0,10);
+                const elIni = document.getElementById('filtroDiarioInicio');
+                const elFim = document.getElementById('filtroDiarioFim');
+                if (elIni) elIni.value = fmt(ini30);
+                if (elFim) elFim.value = fmt(hoje);
             } catch(e) {
                 console.error('Erro ao inicializar Firebase:', e);
                 showToast('Erro ao conectar ao banco de dados.', 'error');
@@ -2434,6 +2467,8 @@
             const tipoComparativo = document.getElementById('filtroTipoComparativo')?.value || 'mensal';
             const metricaComparativo = document.getElementById('filtroMetricaComparativo')?.value || 'containers';
             atualizarGraficoComparativoAnual(containers, tipoComparativo, metricaComparativo);
+            // Atualizar gráfico histórico diário
+            atualizarGraficoHistoricoDiario();
 
             // Atualizar tabela do dashboard - apenas pendentes do ano selecionado
             const containersPendentesFiltrados = containersFiltradosPorAno.filter(c => c.statusEntrega !== 'entregue');
@@ -5375,6 +5410,187 @@
                 if (el) { el.textContent = `✅ Dados aplicados para ${container}`; el.style.color = 'var(--success)'; }
                 showToast(`Programação aplicada: ${container}`, 'success');
             }
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // GRÁFICO HISTÓRICO DIÁRIO DE RECEBIMENTOS
+        // ═══════════════════════════════════════════════════════
+
+        function selecionarPeriodoHistorico(dias) {
+            periodoHistoricoDias = dias;
+
+            // Atualizar visual dos botões
+            ['30','60','90'].forEach(d => {
+                const btn = document.getElementById(`btnPeriodo${d}`);
+                if (btn) btn.classList.toggle('active', String(dias) === d);
+            });
+
+            // Calcular intervalo e preencher os inputs de data
+            const fim = new Date();
+            const ini = new Date();
+            ini.setDate(ini.getDate() - (dias - 1));
+
+            const fmt = d => d.toISOString().slice(0, 10);
+            const inputIni = document.getElementById('filtroDiarioInicio');
+            const inputFim = document.getElementById('filtroDiarioFim');
+            if (inputIni) inputIni.value = fmt(ini);
+            if (inputFim) inputFim.value = fmt(fim);
+
+            atualizarGraficoHistoricoDiario();
+        }
+
+        function atualizarGraficoHistoricoDiario() {
+            const ctx = document.getElementById('graficoHistoricoDiario');
+            if (!ctx) return;
+
+            // Determinar intervalo de datas
+            let dataIni, dataFim;
+            const inputIni = document.getElementById('filtroDiarioInicio');
+            const inputFim = document.getElementById('filtroDiarioFim');
+
+            if (inputIni?.value && inputFim?.value) {
+                dataIni = new Date(inputIni.value + 'T00:00:00');
+                dataFim = new Date(inputFim.value + 'T23:59:59');
+            } else {
+                // Padrão: últimos 30 dias
+                dataFim = new Date();
+                dataIni = new Date();
+                dataIni.setDate(dataIni.getDate() - 29);
+                dataIni.setHours(0,0,0,0);
+                dataFim.setHours(23,59,59,999);
+            }
+
+            // Gerar array de todas as datas no intervalo
+            const diasLabels = [];
+            const diasMap = {};
+            const cur = new Date(dataIni);
+            while (cur <= dataFim) {
+                const key = cur.toISOString().slice(0,10);
+                diasLabels.push(key);
+                diasMap[key] = 0;
+                cur.setDate(cur.getDate() + 1);
+            }
+
+            // Contar containers por data de entregaTbx
+            containers.forEach(c => {
+                if (!c.entregaTbx) return;
+                const key = c.entregaTbx.slice(0,10);
+                if (diasMap.hasOwnProperty(key)) diasMap[key]++;
+            });
+
+            const quantidades = diasLabels.map(k => diasMap[k]);
+
+            // Formatar labels: "Seg 03/07"
+            const diaSemana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+            const labels = diasLabels.map(key => {
+                const [yr, mo, dy] = key.split('-');
+                const d = new Date(Number(yr), Number(mo)-1, Number(dy));
+                return `${diaSemana[d.getDay()]} ${dy}/${mo}`;
+            });
+
+            // Cores: destaque nos dias com containers, apagado nos zeros
+            const bgColors = quantidades.map(q =>
+                q === 0 ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.75)'
+            );
+            const borderColors = quantidades.map(q =>
+                q === 0 ? 'rgba(59,130,246,0.2)' : '#3b82f6'
+            );
+
+            // Linha de média (apenas sobre dias com dados)
+            const total = quantidades.reduce((a,b) => a+b, 0);
+            const diasComDados = quantidades.filter(q => q > 0).length;
+            const media = diasComDados > 0 ? total / diasComDados : 0;
+            const linhaMedia = quantidades.map(q => q > 0 ? parseFloat(media.toFixed(2)) : null);
+
+            // Destruir gráfico anterior
+            if (graficoHistoricoDiario) {
+                graficoHistoricoDiario.destroy();
+                graficoHistoricoDiario = null;
+            }
+
+            graficoHistoricoDiario = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Containers recebidos',
+                            data: quantidades,
+                            backgroundColor: bgColors,
+                            borderColor: borderColors,
+                            borderWidth: 1.5,
+                            borderRadius: 5,
+                            order: 2
+                        },
+                        {
+                            label: `Média (${media.toFixed(1)} ctrs/dia com recebimento)`,
+                            data: linhaMedia,
+                            type: 'line',
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            pointRadius: 0,
+                            tension: 0,
+                            order: 1,
+                            spanGaps: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#94a3b8', font: { size: 12, family: 'Inter' } }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1e2536',
+                            borderColor: '#2e3a52',
+                            borderWidth: 1,
+                            titleColor: '#f0f4ff',
+                            bodyColor: '#94a3b8',
+                            callbacks: {
+                                label: ctx => {
+                                    const v = ctx.raw;
+                                    if (v === null) return null;
+                                    if (ctx.datasetIndex === 0) return ` ${v} container${v !== 1 ? 's' : ''}`;
+                                    return ` Média: ${v}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#4a5a78',
+                                font: { size: 10, family: 'Inter' },
+                                maxRotation: 45,
+                                autoSkip: true,
+                                maxTicksLimit: 31
+                            },
+                            grid: { color: 'rgba(46,58,82,0.5)' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 11, family: 'Inter' },
+                                stepSize: 1,
+                                precision: 0
+                            },
+                            grid: { color: 'rgba(46,58,82,0.5)' },
+                            title: {
+                                display: true,
+                                text: 'Containers',
+                                color: '#4a5a78',
+                                font: { size: 11, family: 'Inter' }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
     </script>
