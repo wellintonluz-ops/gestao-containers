@@ -5452,7 +5452,6 @@
                 dataIni = new Date(inputIni.value + 'T00:00:00');
                 dataFim = new Date(inputFim.value + 'T23:59:59');
             } else {
-                // Padrão: últimos 30 dias
                 dataFim = new Date();
                 dataIni = new Date();
                 dataIni.setDate(dataIni.getDate() - 29);
@@ -5503,10 +5502,7 @@
             const linhaMedia = quantidades.map(q => q > 0 ? parseFloat(media.toFixed(2)) : null);
 
             // Destruir gráfico anterior
-            if (graficoHistoricoDiario) {
-                graficoHistoricoDiario.destroy();
-                graficoHistoricoDiario = null;
-            }
+            if (graficoHistoricoDiario) { graficoHistoricoDiario.destroy(); graficoHistoricoDiario = null; }
 
             graficoHistoricoDiario = new Chart(ctx, {
                 type: 'bar',
@@ -5564,7 +5560,7 @@
                     scales: {
                         x: {
                             ticks: {
-                                color: '#4a5a78',
+                                color: '#94a3b8',
                                 font: { size: 10, family: 'Inter' },
                                 maxRotation: 45,
                                 autoSkip: true,
@@ -5584,7 +5580,7 @@
                             title: {
                                 display: true,
                                 text: 'Containers',
-                                color: '#4a5a78',
+                                color: '#94a3b8',
                                 font: { size: 11, family: 'Inter' }
                             }
                         }
