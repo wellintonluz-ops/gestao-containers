@@ -3699,7 +3699,15 @@
 
         // Atualizar planejador semanal
         function atualizarPlanejador() {
-            const previsoesConsideradas = obterPrevisoesFiltradas();
+            // Montar set de pares container|lote já programados
+            const programados = new Set(
+                containers.map(c => `${normalizarNumeroContainer(c.container)}|${(c.refTbx || '').trim()}`)
+            );
+
+            const previsoesConsideradas = obterPrevisoesFiltradas().filter(p => {
+                const chave = `${normalizarNumeroContainer(p.container)}|${(p.po || '').trim()}`;
+                return !programados.has(chave);
+            });
             const previsoesOrdenadasPorData = [...previsoesConsideradas].sort((a, b) => {
                 const da = a.dataEmbarque || '';
                 const db = b.dataEmbarque || '';
