@@ -899,7 +899,8 @@
                 <div class="stats" style="margin-bottom: 0;">
                 <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
                     <h3 id="totalFrete">R$ 0,00</h3>
-                    <p>Total em Frete</p>
+                    <p style="margin-bottom: 4px;">Total em Frete</p>
+                    <small id="totalFreteQtd" style="color: #e6fbff; font-weight: 600;">0 container(s)</small>
                 </div>
                 <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                     <h3 id="totalPeriodo2">R$ 0,00</h3>
@@ -2144,6 +2145,8 @@
             // Calcular total de frete - do ano selecionado
             const totalFrete = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.frete) || 0), 0);
             document.getElementById('totalFrete').textContent = formatarMoeda(totalFrete);
+            const qtdFrete = containersFiltradosPorAno.filter(c => (parseFloat(c.frete) || 0) > 0).length;
+            document.getElementById('totalFreteQtd').textContent = `${qtdFrete} container(s)`;
 
             // Calcular totais adicionais de custos
             const totalPeriodo1 = containersFiltradosPorAno.reduce((sum, c) => sum + (parseFloat(c.valorPeriodo1) || 0), 0);
