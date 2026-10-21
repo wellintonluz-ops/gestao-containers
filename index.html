@@ -196,6 +196,192 @@
             font-size: 14px;
         }
 
+        /* Barra da Programação de Recebimento: título + ações numa linha */
+        .prog-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px 20px;
+            flex-wrap: wrap;
+            padding-bottom: 14px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #3e3e42;
+        }
+        .prog-titulo {
+            margin: 0;
+            color: #007acc;
+            font-size: 1.35em;
+        }
+        .prog-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .prog-toolbar .tb-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            height: 34px;
+            padding: 0 14px;
+            margin: 0;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            color: #d4d4d4;
+            background: #2d2d30;
+            border: 1px solid #3e3e42;
+            border-radius: 6px;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+        .prog-toolbar .tb-btn svg {
+            width: 15px;
+            height: 15px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
+        }
+        .prog-toolbar .tb-btn:hover {
+            background: #37373d;
+            border-color: #55555c;
+            color: #fff;
+            transform: none;
+            box-shadow: none;
+        }
+        .prog-toolbar .tb-btn:focus-visible {
+            outline: 2px solid #3b9eff;
+            outline-offset: 2px;
+        }
+        .prog-toolbar .tb-primary {
+            background: #0e7c66;
+            border-color: #0e7c66;
+            color: #fff;
+        }
+        .prog-toolbar .tb-primary:hover {
+            background: #0b9a7e;
+            border-color: #0b9a7e;
+        }
+        .prog-toolbar .tb-danger {
+            color: #f28b82;
+        }
+        .prog-toolbar .tb-danger:hover {
+            background: rgba(239, 83, 80, 0.12);
+            border-color: #ef5350;
+            color: #ff9e98;
+        }
+        .prog-toolbar .tb-divisor {
+            width: 1px;
+            height: 22px;
+            background: #3e3e42;
+            margin: 0 4px;
+        }
+
+        /* Previsão: filtro + navegação de semana numa linha */
+        .prev-controles {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .prev-filtro {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 320px;
+            max-width: 100%;
+        }
+        .prev-filtro svg {
+            position: absolute;
+            left: 11px;
+            width: 15px;
+            height: 15px;
+            fill: none;
+            stroke: #8a8a8a;
+            stroke-width: 2;
+            stroke-linecap: round;
+            pointer-events: none;
+        }
+        .prev-filtro input {
+            width: 100%;
+            height: 34px;
+            padding: 0 32px 0 34px;
+            font-size: 13px;
+            color: #d4d4d4;
+            background: #252526;
+            border: 1px solid #3e3e42;
+            border-radius: 6px;
+        }
+        .prev-filtro input:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+        .prev-filtro-limpar {
+            position: absolute;
+            right: 6px;
+            width: 22px;
+            height: 22px;
+            border: none;
+            border-radius: 4px;
+            background: transparent;
+            color: #8a8a8a;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .prev-filtro-limpar:hover { background: #3e3e42; color: #fff; }
+        .prev-filtro input:placeholder-shown + .prev-filtro-limpar { display: none; }
+        .prev-semana {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .prev-semana h3 {
+            margin: 0;
+            min-width: 190px;
+            text-align: center;
+            font-size: 15px;
+            font-weight: 600;
+            color: #d4d4d4;
+        }
+        .prev-semana .tb-btn,
+        .prog-toolbar .tb-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .prev-semana .prev-seta {
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            margin: 0;
+            color: #d4d4d4;
+            background: #2d2d30;
+            border: 1px solid #3e3e42;
+            border-radius: 6px;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .prev-semana .prev-seta:hover {
+            background: #37373d;
+            border-color: #55555c;
+            color: #fff;
+            transform: none;
+            box-shadow: none;
+        }
+        .prev-semana .prev-seta svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
         .import-section {
             background: #252526;
             padding: 20px;
@@ -479,6 +665,42 @@
         .status-pendente {
             background: #fff3cd;
             color: #856404;
+        }
+
+        /* Marcador vindo do site de Conferência de Container */
+        .badge-em-descarga {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            padding: 3px 9px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.5);
+        }
+        .badge-em-descarga::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #f59e0b;
+            animation: pulsoDescarga 1.4s ease-in-out infinite;
+        }
+        @keyframes pulsoDescarga {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .badge-em-descarga::before { animation: none; }
+        }
+        .status-cell-stack {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .status-concluido {
@@ -772,17 +994,27 @@
             </div>
 
             <div id="consultaConteudo">
-            <h2 style="margin-bottom: 20px; color: #007acc;">📋 Programação de Recebimento TBX</h2>
-
-            <div class="import-section">
-                <h3 style="margin-bottom: 15px; color: #007acc;">📥 Importar/Exportar Dados</h3>
-                <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div class="prog-header">
+                <h2 class="prog-titulo">📋 Programação de Recebimento TBX</h2>
+                <div class="prog-toolbar">
                     <input type="file" id="fileInputCustosPorto" accept=".xlsx,.xls,.csv" onchange="importarCustosPorto(event)" style="display: none;">
-                    <button id="btnAbrirConferencia" class="btn btn-conferencia" onclick="abrirConferencia()">📦 Conferência de Container</button>
-                    <button id="btnImportarCustosPorto" class="btn btn-import" onclick="document.getElementById('fileInputCustosPorto').click()">💰 Importar Custos do Porto</button>
-                    <button id="btnExportarArquivo" class="btn btn-export" onclick="exportarParaExcel()">📤 Exportar para Excel</button>
-                    <button id="btnLimparTodosDados" class="btn btn-delete" onclick="limparTodosDados()">🗑️ Limpar Todos os Dados</button>
-                    <button id="btnFormatoImportacao" class="btn" style="background: #3e3e42; cursor: help;" title="Formato esperado do arquivo:&#10;• Colunas: Ref. TBX | Containers | Vencimento armazenagem PORTO | Vencimento demurrage | Data da liberação carregamento | Data carregamento | Entrada armazém parceiro | Vencimento prazo no armazém | Entrega TBX | Status | Obs | Transporte Porto x TBX | Arm. de container CHEIO | Arm. de container VAZIO | Janela especial | Mão de obra para descarregamento | Lavação container&#10;• Formato de data: DD/MM/AAAA&#10;• Suporta arquivos Excel (.xlsx, .xls) e CSV">ℹ️ Formato</button>
+                    <button id="btnAbrirConferencia" class="btn tb-btn tb-primary" onclick="abrirConferencia()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        Conferência de Container
+                    </button>
+                    <button id="btnImportarCustosPorto" class="btn tb-btn" onclick="document.getElementById('fileInputCustosPorto').click()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                        Importar Custos do Porto
+                    </button>
+                    <button id="btnExportarArquivo" class="btn tb-btn btn-export" onclick="exportarParaExcel()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+                        Exportar para Excel
+                    </button>
+                    <span id="tbDivisorRestrito" class="tb-divisor" aria-hidden="true"></span>
+                    <button id="btnLimparTodosDados" class="btn tb-btn tb-danger btn-delete" onclick="limparTodosDados()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                        Limpar Todos os Dados
+                    </button>
                 </div>
             </div>
 
@@ -1092,35 +1324,41 @@
 
         <!-- ABA PLANEJADOR SEMANAL -->
         <div id="planejador" class="tab-content active">
-            <h2 style="margin-bottom: 20px; color: #007acc;">🚢 Previsão de Chegada no Porto</h2>
-            
-            <!-- Navegação de Semana -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <button class="btn btn-primary" onclick="navegarSemana(-1)">⬅️ Semana Anterior</button>
-                <h3 id="tituloSemana" style="color: #007acc;">Semana Atual</h3>
-                <button class="btn btn-primary" onclick="navegarSemana(1)">Semana Seguinte ➡️</button>
-            </div>
-
-            <!-- Filtro por Lote/PO -->
-            <div class="form-section" style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
-                <div style="flex: 1; min-width: 260px;">
-                    <label for="filtroLoteInput" style="margin-bottom: 6px; display: block;">Filtrar por lote/PO</label>
-                    <input id="filtroLoteInput" type="text" class="search-box" placeholder="Ex: TBX-2025-001" oninput="filtrarPlanejadorPorLote(this.value)">
-                </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn btn-primary" style="background: #3e3e42; color: #cccccc;" onclick="document.getElementById('filtroLoteInput').value=''; filtrarPlanejadorPorLote('');">Limpar filtro</button>
-                </div>
-            </div>
-
-            <!-- Importar Base de Previsão (só para logado) -->
-            <div class="form-section" id="importPrevisaoSection" style="margin-bottom: 20px; display: none;">
-                <h3 style="margin-bottom: 15px; color: #007acc;">📥 Importar Base de Previsão</h3>
-                <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+            <div class="prog-header">
+                <h2 class="prog-titulo">🚢 Previsão de Chegada no Porto</h2>
+                <!-- Ações (só para logado) -->
+                <div class="prog-toolbar" id="importPrevisaoSection" style="display: none;">
                     <input type="file" id="fileInputPrevisao" accept=".xlsx,.xls,.csv" onchange="importarPrevisao(event)" style="display: none;">
-                    <button class="btn btn-import" onclick="document.getElementById('fileInputPrevisao').click()">📂 Importar Excel de Previsão</button>
-                    <button class="btn btn-primary" onclick="abrirModalRegistro()">➕ Programação de Container</button>
-                    <button class="btn" style="background: #3e3e42; cursor: help;" title="Formato esperado:&#10;• Coluna A: Número da PO (Lote)&#10;• Coluna D: Container&#10;• Coluna E: Item/Produto&#10;• Coluna F: Quantidade&#10;• Coluna I: Previsão de Chegada (Data Embarque)">ℹ️ Formato</button>
-                    <small style="color: #e74c3c;">⚠️ A importação substitui todos os dados anteriores</small>
+                    <button class="btn tb-btn tb-primary" onclick="abrirModalRegistro()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                        Programação de Container
+                    </button>
+                    <button class="btn tb-btn" title="A importação substitui todos os dados anteriores" onclick="if (confirm('A importação substitui todos os dados de previsão anteriores. Continuar?')) document.getElementById('fileInputPrevisao').click()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                        Importar Excel de Previsão
+                    </button>
+                    <button class="btn tb-btn" style="cursor: help;" title="Formato esperado:&#10;• Coluna A: Número da PO (Lote)&#10;• Coluna D: Container&#10;• Coluna E: Item/Produto&#10;• Coluna F: Quantidade&#10;• Coluna I: Previsão de Chegada (Data Embarque)&#10;&#10;A importação substitui todos os dados anteriores.">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+                        Formato
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtro por lote + navegação de semana -->
+            <div class="prev-controles">
+                <div class="prev-filtro">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                    <input id="filtroLoteInput" type="text" placeholder="Filtrar por lote/PO" aria-label="Filtrar por lote/PO" oninput="filtrarPlanejadorPorLote(this.value)">
+                    <button type="button" class="prev-filtro-limpar" title="Limpar filtro" aria-label="Limpar filtro" onclick="document.getElementById('filtroLoteInput').value=''; filtrarPlanejadorPorLote('');">✕</button>
+                </div>
+                <div class="prev-semana">
+                    <button class="btn tb-btn prev-seta" onclick="navegarSemana(-1)" title="Semana anterior" aria-label="Semana anterior">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+                    </button>
+                    <h3 id="tituloSemana">Semana Atual</h3>
+                    <button class="btn tb-btn prev-seta" onclick="navegarSemana(1)" title="Semana seguinte" aria-label="Semana seguinte">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                    </button>
                 </div>
             </div>
 
@@ -1454,6 +1692,8 @@
                     if (btnExportarArquivo) btnExportarArquivo.style.display = usuarioLogado ? '' : 'none';
                     if (btnLimparTodosDados) btnLimparTodosDados.style.display = usuarioLogado ? '' : 'none';
                     if (btnFormatoImportacao) btnFormatoImportacao.style.display = usuarioLogado ? '' : 'none';
+                    const tbDivisorRestrito = document.getElementById('tbDivisorRestrito');
+                    if (tbDivisorRestrito) tbDivisorRestrito.style.display = usuarioLogado ? '' : 'none';
                     if (btnToggleColunasDetalhes) btnToggleColunasDetalhes.style.display = usuarioLogado ? '' : 'none';
                     if (!usuarioLogado) {
                         colunasDetalhesExpandidas = false;
@@ -1530,7 +1770,99 @@
         // Carregar dados ao iniciar com atualização em tempo real
         window.onload = function() {
             iniciarListenersTempoReal();
+            iniciarSincronizacaoConferencia();
         };
+
+        // ===== Integração com o site de Conferência de Container =====
+        // O site grava cada conferência no projeto Firebase "sistema-conferencia-container":
+        //   startTime -> preenchido na primeira leitura do scanner (descarga iniciada)
+        //   endTime   -> preenchido quando a conferência é concluída
+        const conferenciaFirebaseConfig = {
+            apiKey: "AIzaSyCGQp7LMkoHdS1SDDUjKwfme4CxO0RYgo0",
+            authDomain: "sistema-conferencia-container.firebaseapp.com",
+            projectId: "sistema-conferencia-container",
+            storageBucket: "sistema-conferencia-container.firebasestorage.app",
+            messagingSenderId: "457778245464",
+            appId: "1:457778245464:web:937e1f89832bd8dc4f3f2d"
+        };
+        let conferenciasPorContainer = new Map(); // container normalizado -> { lote, iniciada, concluida, concluidaEm }
+        const entregasAutomaticasEmAndamento = new Set();
+
+        function normalizarChaveConferencia(valor) {
+            return String(valor || '').toUpperCase().split('/')[0].replace(/[^A-Z0-9]/g, '').substring(0, 11);
+        }
+        function normalizarLoteConferencia(valor) {
+            return String(valor || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        }
+
+        // Retorna a conferência do container, desde que o lote seja o mesmo
+        // (evita que uma conferência antiga de um container reutilizado afete uma nova programação)
+        function obterConferenciaDoContainer(c) {
+            const conf = conferenciasPorContainer.get(normalizarChaveConferencia(c.container));
+            if (!conf) return null;
+            const loteConf = normalizarLoteConferencia(conf.lote);
+            const loteProg = normalizarLoteConferencia(c.refTbx);
+            if (loteConf && loteProg && loteConf !== loteProg) return null;
+            return conf;
+        }
+
+        function conferenciaEmDescarga(c) {
+            const conf = obterConferenciaDoContainer(c);
+            return !!(conf && conf.iniciada && !conf.concluida);
+        }
+
+        // Marca como entregue toda programação cuja conferência já foi concluída
+        function sincronizarEntregasPorConferencia() {
+            if (!conferenciasPorContainer.size || !containers.length) return;
+            containers.forEach(c => {
+                if (c.statusEntrega === 'entregue') return;
+                const conf = obterConferenciaDoContainer(c);
+                if (!conf || !conf.concluida) return;
+                const id = String(c.id);
+                if (entregasAutomaticasEmAndamento.has(id)) return;
+                entregasAutomaticasEmAndamento.add(id);
+                db.collection('containers').doc(id).update({
+                    statusEntrega: 'entregue',
+                    entregueViaConferencia: true,
+                    conferenciaConcluidaEm: conf.concluidaEm || new Date().toISOString()
+                }).catch(err => {
+                    console.error('Erro ao marcar entregue pela conferência:', c.container, err);
+                }).finally(() => {
+                    entregasAutomaticasEmAndamento.delete(id);
+                });
+            });
+        }
+
+        function iniciarSincronizacaoConferencia() {
+            try {
+                const appConf = firebase.apps.find(a => a.name === 'conferencia')
+                    || firebase.initializeApp(conferenciaFirebaseConfig, 'conferencia');
+                appConf.auth().signInAnonymously().then(() => {
+                    appConf.firestore()
+                        .collection('artifacts').doc('default-app-id')
+                        .collection('public').doc('data')
+                        .collection('conferences')
+                        .onSnapshot(snapshot => {
+                            const mapa = new Map();
+                            snapshot.docs.forEach(doc => {
+                                const d = doc.data();
+                                const fim = d.endTime && d.endTime.toDate ? d.endTime.toDate() : null;
+                                mapa.set(normalizarChaveConferencia(doc.id), {
+                                    lote: d.lote || '',
+                                    iniciada: !!d.startTime,
+                                    concluida: !!d.endTime,
+                                    concluidaEm: fim ? fim.toISOString() : null
+                                });
+                            });
+                            conferenciasPorContainer = mapa;
+                            atualizarTabela();
+                            sincronizarEntregasPorConferencia();
+                        }, err => console.warn('Conferência: não foi possível acompanhar as conferências.', err));
+                }).catch(err => console.warn('Conferência: falha na autenticação anônima.', err));
+            } catch (err) {
+                console.warn('Conferência: integração indisponível.', err);
+            }
+        }
 
         // Configurar listeners em tempo real
         function iniciarListenersTempoReal() {
@@ -1544,6 +1876,7 @@
                     atualizarTabela();
                     atualizarDashboard();
                     atualizarPlanejador();
+                    sincronizarEntregasPorConferencia();
                 });
 
                 // Transportadoras
@@ -1968,12 +2301,17 @@
                 return `
                 <tr class="row-clickable" onclick="abrirItensContainerModal('${c.container}','${c.refTbx}')">
                     <td>
+                        <div class="status-cell-stack">
                         ${isEntregue
                             ? '<button class="btn btn-status entregue" disabled>✅ Entregue</button>'
                             : (usuarioLogado
                                 ? `<button class="btn btn-status" onclick="event.stopPropagation(); marcarComoEntregue('${c.id}')">Marcar Entregue</button>`
                                 : '<span class="status-badge status-pendente">⏳ Pendente</span>')
                         }
+                        ${!isEntregue && conferenciaEmDescarga(c)
+                            ? '<span class="badge-em-descarga" title="Conferência iniciada no site de conferência">Em descarga</span>'
+                            : ''}
+                        </div>
                     </td>
                     <td><strong>${c.refTbx}</strong></td>
                     <td>${c.container}</td>
