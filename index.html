@@ -312,6 +312,53 @@
             border: 1px solid #3e3e42;
         }
 
+        /* Programação de Recebimento: cabeçalho fixo ao rolar */
+        #consulta .table-container {
+            overflow: auto;
+            max-height: calc(100vh - 120px);
+        }
+        #containerTable thead th {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            background: #007acc;
+            box-shadow: inset 0 -1px 0 #005a9e;
+        }
+
+        /* Conferência de Container */
+        .btn-conferencia {
+            background: #0e7c66;
+            color: #fff;
+        }
+        .btn-conferencia:hover { background: #0b9a7e; }
+        .conferencia-barra {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .btn-voltar-conferencia {
+            background: #3e3e42;
+            color: #fff;
+        }
+        .btn-voltar-conferencia:hover { background: #505056; }
+        .conferencia-link-externo {
+            margin-left: auto;
+            color: #9cdcfe;
+            font-size: 13px;
+            text-decoration: none;
+        }
+        .conferencia-link-externo:hover { text-decoration: underline; }
+        .conferencia-iframe {
+            width: 100%;
+            height: calc(100vh - 160px);
+            min-height: 500px;
+            border: 1px solid #3e3e42;
+            border-radius: 10px;
+            background: #fff;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -714,14 +761,24 @@
 
         <!-- ABA CONSULTA -->
         <div id="consulta" class="tab-content">
+            <!-- Painel de Conferência de Container (site externo embutido) -->
+            <div id="painelConferencia" style="display: none;">
+                <div class="conferencia-barra">
+                    <button class="btn btn-voltar-conferencia" onclick="fecharConferencia()">← Voltar para Programação</button>
+                    <h2 style="margin: 0; color: #007acc; font-size: 1.3em;">📦 Conferência de Container</h2>
+                    <a href="https://wellintonluz-ops.github.io/conferencia-container/" target="_blank" rel="noopener" class="conferencia-link-externo">Abrir em nova aba ↗</a>
+                </div>
+                <iframe id="iframeConferencia" title="Conferência de Container" class="conferencia-iframe"></iframe>
+            </div>
+
+            <div id="consultaConteudo">
             <h2 style="margin-bottom: 20px; color: #007acc;">📋 Programação de Recebimento TBX</h2>
-            
+
             <div class="import-section">
                 <h3 style="margin-bottom: 15px; color: #007acc;">📥 Importar/Exportar Dados</h3>
-                <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
-                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="importarArquivo(event)" style="display: none;">
+                <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                     <input type="file" id="fileInputCustosPorto" accept=".xlsx,.xls,.csv" onchange="importarCustosPorto(event)" style="display: none;">
-                    <button id="btnImportarArquivo" class="btn btn-import" onclick="document.getElementById('fileInput').click()">📂 Importar Excel/CSV</button>
+                    <button id="btnAbrirConferencia" class="btn btn-conferencia" onclick="abrirConferencia()">📦 Conferência de Container</button>
                     <button id="btnImportarCustosPorto" class="btn btn-import" onclick="document.getElementById('fileInputCustosPorto').click()">💰 Importar Custos do Porto</button>
                     <button id="btnExportarArquivo" class="btn btn-export" onclick="exportarParaExcel()">📤 Exportar para Excel</button>
                     <button id="btnLimparTodosDados" class="btn btn-delete" onclick="limparTodosDados()">🗑️ Limpar Todos os Dados</button>
@@ -784,6 +841,7 @@
             
             <!-- Paginação -->
             <div id="paginacao"></div>
+            </div><!-- /consultaConteudo -->
         </div>
 
         <!-- ABA CADASTRO -->
@@ -1619,6 +1677,20 @@
                 alert('⚠️ Erro ao excluir parâmetro de pallet.');
                 return false;
             }
+        }
+
+        // Conferência de Container (site externo dentro da aba Programação de Recebimento)
+        function abrirConferencia() {
+            const iframe = document.getElementById('iframeConferencia');
+            if (!iframe.getAttribute('src')) iframe.setAttribute('src', 'https://wellintonluz-ops.github.io/conferencia-container/');
+            document.getElementById('consultaConteudo').style.display = 'none';
+            document.getElementById('painelConferencia').style.display = '';
+            window.scrollTo(0, 0);
+        }
+        function fecharConferencia() {
+            document.getElementById('painelConferencia').style.display = 'none';
+            document.getElementById('consultaConteudo').style.display = '';
+            window.scrollTo(0, 0);
         }
 
         // Função para alternar entre abas
